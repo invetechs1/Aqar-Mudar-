@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PropertyCard } from "@/components/PropertyCard";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { HomeSearch } from "@/components/HomeSearch";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const dict = getDictionary();
+  const locale = getLocale();
+  const dict = getDictionary(locale);
   const featured = await prisma.property.findMany({
     where: { isCertified: true },
     take: 6,
@@ -63,7 +64,7 @@ export default async function HomePage() {
 
           {/* Hero search card */}
           <div className="mx-auto mt-10" style={{ maxWidth: 900 }}>
-            <HomeSearch />
+            <HomeSearch dict={dict.homeSearch} locale={locale} />
           </div>
 
           <div
@@ -75,7 +76,7 @@ export default async function HomePage() {
               className="hover:underline"
               style={{ color: "#e6c982" }}
             >
-              {dict.hero.ctaBrowse} ←
+              {dict.hero.ctaBrowse} {dict.common.arrow}
             </Link>
             <span>·</span>
             <Link
@@ -83,7 +84,7 @@ export default async function HomePage() {
               className="hover:underline"
               style={{ color: "#e6c982" }}
             >
-              {dict.hero.ctaOwner} ←
+              {dict.hero.ctaOwner} {dict.common.arrow}
             </Link>
           </div>
         </div>
@@ -171,7 +172,7 @@ export default async function HomePage() {
                 </p>
               </div>
               <Link href="/properties" className="btn-secondary rounded-full">
-                {dict.featured.viewAll} ←
+                {dict.featured.viewAll} {dict.common.arrow}
               </Link>
             </div>
             <div
@@ -179,7 +180,7 @@ export default async function HomePage() {
               style={{ gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))" }}
             >
               {featured.map((p) => (
-                <PropertyCard key={p.id} property={p} />
+                <PropertyCard key={p.id} property={p} locale={locale} />
               ))}
             </div>
           </div>
@@ -243,7 +244,7 @@ export default async function HomePage() {
               </p>
             </div>
             <Link href="/auth/signup" className="btn-gold">
-              {dict.cta.button}
+              {dict.cta.button} {dict.common.arrow}
             </Link>
           </div>
         </div>

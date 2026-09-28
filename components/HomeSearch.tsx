@@ -3,26 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { features } from "@/lib/features";
+import { CITY_OPTIONS, LISTING_TYPE, PROPERTY_TYPE, vocab } from "@/lib/format";
+import type { Dictionary, Locale } from "@/lib/i18n";
 
-const CITIES = ["الرياض", "جدة", "الدمام", "الخبر", "مكة"];
-const TYPES = [
-  { v: "APARTMENT", l: "شقة" },
-  { v: "VILLA", l: "فيلا" },
-  { v: "LAND", l: "أرض" },
-  { v: "COMMERCIAL", l: "تجاري" },
-  { v: "BUILDING", l: "مبنى" },
-];
-const LISTINGS_ALL = [
-  { v: "SALE", l: "للبيع" },
-  { v: "PARTIAL_SALE", l: "بيع جزئي" },
-  { v: "INVESTMENT", l: "استثمار" },
-];
-
-export function HomeSearch() {
+export function HomeSearch({ dict, locale = "ar" }: { dict: Dictionary["homeSearch"]; locale?: Locale }) {
   const router = useRouter();
   const [city, setCity] = useState("");
   const [type, setType] = useState("");
   const [listing, setListing] = useState("");
+
+  const TYPES = ["APARTMENT", "VILLA", "LAND", "COMMERCIAL", "BUILDING"].map((v) => ({
+    v,
+    l: vocab(PROPERTY_TYPE, locale, v),
+  }));
+  const LISTINGS_ALL = ["SALE", "PARTIAL_SALE", "INVESTMENT"].map((v) => ({
+    v,
+    l: vocab(LISTING_TYPE, locale, v),
+  }));
 
   // Fractional-sale option is hidden until the CMA/SPV licence is in place.
   const listings = features.partialSale
@@ -57,7 +54,7 @@ export function HomeSearch() {
     >
       <label style={cellStyle} className="flex-1 min-w-0 text-start">
         <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
-          المدينة
+          {dict.city}
         </span>
         <select
           value={city}
@@ -65,10 +62,10 @@ export function HomeSearch() {
           className="w-full bg-transparent outline-none text-ink font-semibold"
           style={{ fontSize: 15 }}
         >
-          <option value="">كل المدن</option>
-          {CITIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          <option value="">{dict.allCities}</option>
+          {CITY_OPTIONS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label[locale]}
             </option>
           ))}
         </select>
@@ -76,7 +73,7 @@ export function HomeSearch() {
       <div style={{ borderInlineEnd: "1px solid #e6eae8" }} />
       <label style={cellStyle} className="flex-1 min-w-0 text-start">
         <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
-          نوع العقار
+          {dict.propertyType}
         </span>
         <select
           value={type}
@@ -84,7 +81,7 @@ export function HomeSearch() {
           className="w-full bg-transparent outline-none text-ink font-semibold"
           style={{ fontSize: 15 }}
         >
-          <option value="">كل الأنواع</option>
+          <option value="">{dict.allTypes}</option>
           {TYPES.map((t) => (
             <option key={t.v} value={t.v}>
               {t.l}
@@ -95,7 +92,7 @@ export function HomeSearch() {
       <div style={{ borderInlineEnd: "1px solid #e6eae8" }} />
       <label style={cellStyle} className="flex-1 min-w-0 text-start">
         <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
-          نوع العرض
+          {dict.listingType}
         </span>
         <select
           value={listing}
@@ -103,7 +100,7 @@ export function HomeSearch() {
           className="w-full bg-transparent outline-none text-ink font-semibold"
           style={{ fontSize: 15 }}
         >
-          <option value="">الكل</option>
+          <option value="">{dict.all}</option>
           {listings.map((l) => (
             <option key={l.v} value={l.v}>
               {l.l}
@@ -116,7 +113,7 @@ export function HomeSearch() {
         className="btn-primary"
         style={{ flex: "1 1 auto", minWidth: 160, borderRadius: 14, padding: "14px 22px" }}
       >
-        ابحث ←
+        {dict.search} {locale === "ar" ? "←" : "→"}
       </button>
     </form>
   );

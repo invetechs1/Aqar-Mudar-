@@ -5,20 +5,22 @@ import { authOptions } from "@/lib/auth";
 import { checkVerification } from "@/lib/nafath";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
+import { apiMessages, getRequestLocale } from "@/lib/api-errors";
 
 const schema = z.object({ transactionId: z.string().min(4), nationalId: z.string().regex(/^\d{10}$/) });
 
 export async function POST(req: NextRequest) {
+  const t = apiMessages(getRequestLocale());
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: t.unauthorized }, { status: 401 });
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: t.invalidData }, { status: 400 });
 
   const result = await checkVerification(parsed.data.transactionId);
   if (!result.verified) {
-    return NextResponse.json({ verified: false, message: "لم يتم التحقق بعد" });
+    return NextResponse.json({ verified: false, message: t.notYetVerified });
   }
 
   await prisma.user.update({

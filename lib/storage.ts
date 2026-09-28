@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { env } from "./env";
+import { apiMessages, getRequestLocale } from "./api-errors";
 
 const MAX_INPUT_BYTES = 15 * 1024 * 1024; // pre-optimize allowance
 const TARGET_WIDTH = 1600;
@@ -11,13 +12,14 @@ const THUMB_WIDTH = 400;
 export type UploadResult = { url: string; thumbUrl: string };
 
 export async function uploadImage(file: File): Promise<UploadResult> {
+  const t = apiMessages(getRequestLocale());
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error("حجم الصورة كبير جدًا (الحد 15MB قبل الضغط)");
+    throw new Error(t.imageTooLarge);
   }
   const buf = Buffer.from(await file.arrayBuffer());
   const meta = await sharp(buf).metadata();
   if (!meta.format || !["jpeg", "png", "webp", "gif"].includes(meta.format)) {
-    throw new Error("نوع الصورة غير مدعوم");
+    throw new Error(t.unsupportedImageType);
   }
 
   const id = randomUUID();

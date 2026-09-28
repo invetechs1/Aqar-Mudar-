@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { LegalDoc } from "@/lib/legal-docs";
 import { getDocumentVersion } from "@/lib/legal-docs";
+import type { Dictionary, Locale } from "@/lib/i18n";
 
 /**
  * Shared legal article renderer.
@@ -10,21 +11,42 @@ import { getDocumentVersion } from "@/lib/legal-docs";
  * the banner from THIS component (not per-page) once each document is
  * approved. `version` and dates are read from the content module so a
  * lawyer's edits don't need a code change.
+ *
+ * The English text is a convenience translation of the Arabic original —
+ * standard practice for a bilingual legal document. The Arabic version
+ * remains authoritative in case of conflict; that notice is shown only in
+ * English (a native Arabic reader doesn't need it).
  */
-export function LegalArticle({ doc }: { doc: LegalDoc }) {
+export function LegalArticle({
+  doc,
+  dict,
+  locale,
+}: {
+  doc: LegalDoc;
+  dict: Dictionary["legal"];
+  locale: Locale;
+}) {
   const version = getDocumentVersion(doc.slug);
+  const b = dict.draftBanner;
 
   return (
     <div style={{ maxWidth: 780 }}>
       <div className="legal-block mb-6">
-        <h4>مسودة للمراجعة القانونية</h4>
+        <h4>{b.title}</h4>
         <p>
-          هذا المستند مسودة أولية أعدّها فريق المنتج ولم يُراجَع بعد من قِبل محامٍ سعودي مرخّص.
-          يجب اعتماد النسخة النهائية قبل الإطلاق التجاري، مع مراعاة متطلبات{" "}
-          <strong>REGA</strong>، و<strong>CMA</strong>، ونظام حماية البيانات الشخصية (<strong>PDPL</strong>) لدى{" "}
-          <strong>SDAIA</strong>، والفوترة الإلكترونية عبر <strong>ZATCA</strong>.
+          {b.before} <strong>REGA</strong>{b.and1}<strong>CMA</strong>{b.and2}<strong>PDPL</strong>{b.and3}{" "}
+          <strong>SDAIA</strong>{b.and4} <strong>ZATCA</strong>{b.end}
         </p>
       </div>
+
+      {locale === "en" && (
+        <div className="legal-block mb-6">
+          <p>
+            This is a convenience translation of the original Arabic document. In the event of any
+            conflict or inconsistency between the two versions, the Arabic version shall prevail.
+          </p>
+        </div>
+      )}
 
       <div className="text-xs uppercase tracking-widest text-muted">{doc.eyebrow}</div>
       <h1 className="font-extrabold mt-2" style={{ fontSize: 40, letterSpacing: "-0.01em" }}>
@@ -35,9 +57,9 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <MetaChip label="الإصدار" value={version} />
-        <MetaChip label="آخر تحديث" value={version} />
-        <MetaChip label="النظام الحاكم" value="المملكة العربية السعودية" />
+        <MetaChip label={dict.meta.version} value={version} />
+        <MetaChip label={dict.meta.lastUpdated} value={version} />
+        <MetaChip label={dict.meta.governingLaw} value={dict.meta.governingLawValue} />
       </div>
 
       <hr className="my-8" style={{ border: 0, borderTop: "1px solid #e6eae8" }} />
@@ -95,7 +117,7 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
 
       <div className="mt-8 text-sm">
         <Link href="/contact" className="text-green-700 font-semibold hover:underline">
-          للاستفسار: legal@aqarmudar.sa ←
+          {dict.contactCta} {locale === "ar" ? "←" : "→"}
         </Link>
       </div>
     </div>

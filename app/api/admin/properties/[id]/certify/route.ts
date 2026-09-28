@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { apiMessages, getRequestLocale } from "@/lib/api-errors";
 
 const schema = z.object({
   structuralCondition: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR"]),
@@ -23,22 +24,23 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const t = apiMessages(getRequestLocale());
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "ممنوع" }, { status: 403 });
+    return NextResponse.json({ error: t.forbidden }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "بيانات غير صحيحة", details: parsed.error.flatten() },
+      { error: t.invalidData, details: parsed.error.flatten() },
       { status: 400 }
     );
   }
 
   const property = await prisma.property.findUnique({ where: { id: params.id } });
-  if (!property) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
+  if (!property) return NextResponse.json({ error: t.notFound }, { status: 404 });
 
   await prisma.$transaction([
     prisma.engineeringReport.upsert({

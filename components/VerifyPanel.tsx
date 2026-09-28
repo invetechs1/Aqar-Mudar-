@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { Dictionary } from "@/lib/i18n";
+
+type VerifyDict = Dictionary["verifyPanel"];
 
 type Props = {
+  dict: VerifyDict;
   email: string;
   phone: string | null;
   emailVerified: boolean;
@@ -13,12 +17,13 @@ type Props = {
 };
 
 export function VerifyPanel(props: Props) {
+  const { dict } = props;
   return (
     <div className="space-y-4">
-      <EmailRow email={props.email} verified={props.emailVerified} />
-      <PhoneRow phone={props.phone} verified={props.phoneVerified} />
-      <NafathRow verified={props.nafathVerified} ready={props.nafathReady} />
-      <TotpRow enabled={props.totpEnabled} />
+      <EmailRow dict={dict} email={props.email} verified={props.emailVerified} />
+      <PhoneRow dict={dict} phone={props.phone} verified={props.phoneVerified} />
+      <NafathRow dict={dict} verified={props.nafathVerified} ready={props.nafathReady} />
+      <TotpRow dict={dict} enabled={props.totpEnabled} />
     </div>
   );
 }
@@ -96,19 +101,19 @@ function StepCard({
   );
 }
 
-function EmailRow({ email, verified }: { email: string; verified: boolean }) {
+function EmailRow({ dict, email, verified }: { dict: VerifyDict; email: string; verified: boolean }) {
   return (
     <StepCard
       n={1}
-      title="البريد الإلكتروني"
+      title={dict.email.title}
       subtitle={email}
       tone="ok"
-      status={verified ? "✓ مكتمل" : "غير مؤكد"}
+      status={verified ? dict.email.complete : dict.email.unverified}
     />
   );
 }
 
-function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean }) {
+function PhoneRow({ dict, phone, verified }: { dict: VerifyDict; phone: string | null; verified: boolean }) {
   const [p, setP] = useState(phone ?? "");
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [step, setStep] = useState<"idle" | "sent">("idle");
@@ -126,7 +131,7 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) setStep("sent");
-    else setMsg(data.error ?? "فشل");
+    else setMsg(data.error ?? dict.phone.failMessage);
     setBusy(false);
   }
 
@@ -140,8 +145,8 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
       body: JSON.stringify({ code: joined }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) setMsg("تم التحقق. حدّث الصفحة.");
-    else setMsg(data.error ?? "فشل");
+    if (res.ok) setMsg(dict.phone.verifiedMessage);
+    else setMsg(data.error ?? dict.phone.failMessage);
     setBusy(false);
   }
 
@@ -159,10 +164,10 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
   return (
     <StepCard
       n={2}
-      title="رقم الجوال"
-      subtitle={phone ?? "غير مضاف"}
+      title={dict.phone.title}
+      subtitle={phone ?? dict.phone.notAdded}
       tone={verified ? "ok" : "warn"}
-      status={verified ? "✓ مكتمل" : "قيد التحقق"}
+      status={verified ? dict.phone.complete : dict.phone.pending}
     >
       {!verified && (
         <div>
@@ -173,10 +178,10 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
                 style={{ minWidth: 200 }}
                 value={p}
                 onChange={(e) => setP(e.target.value)}
-                placeholder="+9665xxxxxxxx"
+                placeholder={dict.phone.placeholder}
               />
               <button className="btn-primary" disabled={busy}>
-                إرسال OTP
+                {dict.phone.sendOtp}
               </button>
             </form>
           ) : (
@@ -203,7 +208,7 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
                 ))}
               </div>
               <button className="btn-primary" disabled={busy} onClick={verify}>
-                تأكيد
+                {dict.phone.confirm}
               </button>
             </div>
           )}
@@ -214,7 +219,7 @@ function PhoneRow({ phone, verified }: { phone: string | null; verified: boolean
   );
 }
 
-function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
+function NafathRow({ dict, verified, ready }: { dict: VerifyDict; verified: boolean; ready: boolean }) {
   const [nid, setNid] = useState("");
   const [tx, setTx] = useState<{ transactionId: string; randomNumber: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -231,7 +236,7 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) setTx({ transactionId: data.transactionId, randomNumber: data.randomNumber });
-    else setMsg(data.error ?? "فشل");
+    else setMsg(data.error ?? dict.nafath.failMessage);
     setBusy(false);
   }
 
@@ -244,18 +249,18 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
       body: JSON.stringify({ transactionId: tx.transactionId, nationalId: nid }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.verified) setMsg("تم التحقق عبر نفاذ. حدّث الصفحة.");
-    else setMsg(data.message ?? data.error ?? "لم يتم التحقق بعد");
+    if (res.ok && data.verified) setMsg(dict.nafath.verifiedMessage);
+    else setMsg(data.message ?? data.error ?? dict.nafath.notYetMessage);
     setBusy(false);
   }
 
   return (
     <StepCard
       n={3}
-      title="نفاذ — التحقق من الهوية"
-      subtitle="مطلوب قبل أي معاملة استثمارية على المنصة."
+      title={dict.nafath.title}
+      subtitle={dict.nafath.subtitle}
       tone="dark"
-      status={verified ? "✓ مكتمل" : "غير مؤكد"}
+      status={verified ? dict.nafath.complete : dict.nafath.unverified}
       variant="dark"
     >
       {!verified && (
@@ -270,7 +275,7 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
                 border: "1px solid rgba(201,162,74,.24)",
               }}
             >
-              نفاذ يعمل في وضع المحاكاة. لا يتم التحقق الفعلي حتى تُهيّئ اعتمادات نفاذ.
+              {dict.nafath.mockNotice}
             </div>
           )}
           {!tx ? (
@@ -287,16 +292,16 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
                 onChange={(e) => setNid(e.target.value)}
                 pattern="\d{10}"
                 maxLength={10}
-                placeholder="رقم الهوية / الإقامة"
+                placeholder={dict.nafath.idPlaceholder}
               />
               <button className="btn-gold" disabled={busy}>
-                ابدأ التحقق
+                {dict.nafath.start}
               </button>
             </form>
           ) : (
             <div>
               <p style={{ color: "#b9cfc4", fontSize: 14 }}>
-                افتح تطبيق نفاذ واختر الرقم:
+                {dict.nafath.openAppIntro}
               </p>
               <div
                 className="my-3 tabular font-extrabold"
@@ -305,7 +310,7 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
                 {tx.randomNumber}
               </div>
               <button onClick={check} className="btn-gold" disabled={busy}>
-                تحققتُ من التطبيق
+                {dict.nafath.iVerified}
               </button>
             </div>
           )}
@@ -316,7 +321,7 @@ function NafathRow({ verified, ready }: { verified: boolean; ready: boolean }) {
   );
 }
 
-function TotpRow({ enabled }: { enabled: boolean }) {
+function TotpRow({ dict, enabled }: { dict: VerifyDict; enabled: boolean }) {
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -338,29 +343,29 @@ function TotpRow({ enabled }: { enabled: boolean }) {
       body: JSON.stringify({ code }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) setMsg("تم تفعيل 2FA. حدّث الصفحة.");
-    else setMsg(data.error ?? "فشل");
+    if (res.ok) setMsg(dict.totp.enabledMessage);
+    else setMsg(data.error ?? dict.totp.failMessage);
     setBusy(false);
   }
 
   return (
     <StepCard
       n={4}
-      title="المصادقة الثنائية (2FA)"
-      subtitle="طبقة أمان إضافية لحسابك عبر تطبيق مصادقة."
+      title={dict.totp.title}
+      subtitle={dict.totp.subtitle}
       tone="neutral"
-      status={enabled ? "✓ مفعّلة" : "غير مفعّلة"}
+      status={enabled ? dict.totp.enabled : dict.totp.notEnabled}
     >
       {!enabled && (
         <div>
           {!setup ? (
             <button onClick={begin} className="btn-secondary" disabled={busy}>
-              تفعيل
+              {dict.totp.enable}
             </button>
           ) : (
             <>
               <div className="text-sm text-muted-2 mb-2">
-                أضف الرمز التالي في تطبيق Google Authenticator / Authy:
+                {dict.totp.addCodeIntro}
               </div>
               <div
                 className="tabular text-center rounded-lg mb-3"
@@ -377,7 +382,7 @@ function TotpRow({ enabled }: { enabled: boolean }) {
                   placeholder="000000"
                 />
                 <button className="btn-primary" disabled={busy}>
-                  تأكيد
+                  {dict.totp.confirm}
                 </button>
               </form>
             </>

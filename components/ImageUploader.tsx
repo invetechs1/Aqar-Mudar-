@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import type { Dictionary } from "@/lib/i18n";
 
 type Props = {
   value: string[];
   onChange: (urls: string[]) => void;
+  dict: Dictionary["properties"]["form"]["uploader"];
   max?: number;
 };
 
-export function ImageUploader({ value, onChange, max = 10 }: Props) {
+export function ImageUploader({ value, onChange, dict, max = 10 }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,7 @@ export function ImageUploader({ value, onChange, max = 10 }: Props) {
         uploaded.push(data.url as string);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "فشل رفع الملف");
+        setError(data.error ?? dict.errorGeneric);
         break;
       }
     }
@@ -51,7 +53,7 @@ export function ImageUploader({ value, onChange, max = 10 }: Props) {
           disabled={busy || value.length >= max}
         />
         <div className="text-sm text-slate-600">
-          {busy ? "جارٍ الرفع..." : "اضغط لاختيار صور (JPG/PNG/WEBP، حد أقصى 5MB لكل صورة)"}
+          {busy ? dict.uploading : dict.prompt}
         </div>
         <div className="text-xs text-slate-400 mt-1">
           {value.length}/{max}
@@ -71,7 +73,7 @@ export function ImageUploader({ value, onChange, max = 10 }: Props) {
                 onClick={() => remove(url)}
                 className="absolute inset-0 bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition"
               >
-                إزالة
+                {dict.remove}
               </button>
             </div>
           ))}

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/lib/i18n";
 
 type Props = {
   latitude?: number | null;
   longitude?: number | null;
   onChange: (lat: number, lng: number) => void;
+  dict: Dictionary["properties"]["form"]["locationPicker"];
   height?: number;
 };
 
@@ -16,6 +18,7 @@ export function LocationPicker({
   latitude,
   longitude,
   onChange,
+  dict,
   height = 320,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -73,8 +76,8 @@ export function LocationPicker({
       />
       <div className="text-xs text-slate-500 mt-2">
         {pos
-          ? `الموقع: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
-          : "اضغط على الخريطة لتحديد موقع العقار (اختياري)"}
+          ? `${dict.positionPrefix}: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
+          : dict.prompt}
       </div>
     </div>
   );

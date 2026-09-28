@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { Dictionary } from "@/lib/i18n";
 
 /**
- * The eight acknowledgement clauses are the canonical list — do not merge them
- * client-side into a single boolean. Each is submitted as its own consent row.
- * If you add or rename a clause here, mirror it in lib/consent.ts
- * `REQUIRED_CLAUSES.INVEST_ACK`, and re-prompt existing users.
+ * The eleven acknowledgement clauses are the canonical list — do not merge
+ * them client-side into a single boolean. Each is submitted as its own
+ * consent row. If you add or rename a clause here, mirror it in
+ * lib/consent.ts `REQUIRED_CLAUSES.INVEST_ACK`, and re-prompt existing users.
  */
 type Clause = {
   key: string;
@@ -16,92 +17,65 @@ type Clause = {
   text: React.ReactNode;
 };
 
-const CLAUSES: Clause[] = [
-  {
-    key: "read_terms",
-    documentSlug: "terms",
-    text: (
-      <>
-        قرأتُ ووافقتُ على{" "}
-        <Link href="/legal/terms" className="underline text-green-700">الشروط والأحكام</Link>.
-      </>
-    ),
-  },
-  {
-    key: "read_privacy",
-    documentSlug: "privacy",
-    text: (
-      <>
-        قرأتُ ووافقتُ على{" "}
-        <Link href="/legal/privacy" className="underline text-green-700">سياسة الخصوصية (PDPL)</Link>.
-      </>
-    ),
-  },
-  {
-    key: "read_disclaimer",
-    documentSlug: "disclaimer",
-    text: (
-      <>
-        قرأتُ ووافقتُ على{" "}
-        <Link href="/legal/disclaimer" className="underline text-green-700">إخلاء المسؤولية</Link>.
-      </>
-    ),
-  },
-  {
-    key: "read_risk",
-    documentSlug: "risk",
-    text: (
-      <>
-        قرأتُ ووافقتُ على{" "}
-        <Link href="/legal/risk" className="underline text-green-700">إفصاح مخاطر الاستثمار</Link>.
-      </>
-    ),
-  },
-  {
-    key: "capital_loss",
-    text: <>أُقرّ بأنني قد أخسر جزءًا أو كامل رأس المال المستثمر.</>,
-  },
-  {
-    key: "estimates_not_guaranteed",
-    text: <>أُقرّ بأن العوائد وفرص رفع القيمة والعمر الافتراضي تقديرات وليست ضمانات.</>,
-  },
-  {
-    key: "report_scope",
-    text: (
-      <>
-        أُقرّ بأن التقرير الهندسي يُصدره Alarrab Engineering &amp; Partner بناءً على معاينة في تاريخ محدد،
-        وأن مسؤولية المنصة تقتصر على ما ورد في نطاق التقرير.
-      </>
-    ),
-  },
-  {
-    key: "no_platform_advice",
-    text: <>أُقرّ بأن محتوى المنصة معلوماتي ولا يُعدّ استشارة مالية أو قانونية.</>,
-  },
-  {
-    key: "independent_inspection",
-    text: <>أُقرّ بحقّي في إجراء فحص مستقل للعقار قبل الاستثمار.</>,
-  },
-  {
-    key: "source_of_funds",
-    text: (
-      <>
-        أُقرّ بأن مصدر الأموال مشروع، وألتزم بمتطلبات مكافحة غسل الأموال (AML) وتقديم المستندات عند الطلب.
-      </>
-    ),
-  },
-  {
-    key: "electronic_logging",
-    text: <>أوافق على تسجيل هذه الإقرارات إلكترونيًا مع التاريخ وعنوان IP.</>,
-  },
-];
+function buildClauses(dict: Dictionary["invest"]["clauses"]): Clause[] {
+  const link = (
+    before: string,
+    href: string,
+    label: string,
+    after: string
+  ): React.ReactNode => (
+    <>
+      {before}{" "}
+      <Link href={href} className="underline text-green-700">{label}</Link>
+      {after}
+    </>
+  );
 
-export function AcknowledgeForm({ propertyId }: { propertyId: string }) {
+  return [
+    {
+      key: "read_terms",
+      documentSlug: "terms",
+      text: link(dict.readTerms.before, "/legal/terms", dict.readTerms.link, dict.readTerms.after),
+    },
+    {
+      key: "read_privacy",
+      documentSlug: "privacy",
+      text: link(dict.readPrivacy.before, "/legal/privacy", dict.readPrivacy.link, dict.readPrivacy.after),
+    },
+    {
+      key: "read_disclaimer",
+      documentSlug: "disclaimer",
+      text: link(dict.readDisclaimer.before, "/legal/disclaimer", dict.readDisclaimer.link, dict.readDisclaimer.after),
+    },
+    {
+      key: "read_risk",
+      documentSlug: "risk",
+      text: link(dict.readRisk.before, "/legal/risk", dict.readRisk.link, dict.readRisk.after),
+    },
+    { key: "capital_loss", text: dict.capitalLoss },
+    { key: "estimates_not_guaranteed", text: dict.estimatesNotGuaranteed },
+    { key: "report_scope", text: dict.reportScope },
+    { key: "no_platform_advice", text: dict.noPlatformAdvice },
+    { key: "independent_inspection", text: dict.independentInspection },
+    { key: "source_of_funds", text: dict.sourceOfFunds },
+    { key: "electronic_logging", text: dict.electronicLogging },
+  ];
+}
+
+export function AcknowledgeForm({
+  propertyId,
+  dict,
+}: {
+  propertyId: string;
+  dict: Dictionary["invest"];
+}) {
+  const t = dict.acknowledge;
   const router = useRouter();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const CLAUSES = buildClauses(dict.clauses);
   const allChecked = CLAUSES.every((c) => checked[c.key]);
 
   async function submit(e: React.FormEvent) {
@@ -122,7 +96,7 @@ export function AcknowledgeForm({ propertyId }: { propertyId: string }) {
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "فشل تسجيل الإقرار");
+      setError(data.error ?? t.errors.genericFail);
       setBusy(false);
     }
   }
@@ -158,7 +132,7 @@ export function AcknowledgeForm({ propertyId }: { propertyId: string }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3 mt-6">
         <Link href={`/properties/${propertyId}`} className="btn-secondary">
-          إلغاء
+          {t.cancel}
         </Link>
         <button
           type="submit"
@@ -166,11 +140,11 @@ export function AcknowledgeForm({ propertyId }: { propertyId: string }) {
           className="btn-primary"
           style={{ opacity: allChecked ? 1 : 0.5 }}
         >
-          {busy ? "جارٍ التسجيل..." : "أُقرّ وأتابع ←"}
+          {busy ? t.submitting : t.submit}
         </button>
       </div>
       <p className="text-xs text-muted mt-4">
-        يُسجَّل كل بند كسجلّ قانوني مستقل. لن تُقبل عملية الاستثمار قبل استكمال جميع الإقرارات.
+        {t.footerNote}
       </p>
     </form>
   );

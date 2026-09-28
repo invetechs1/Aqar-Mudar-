@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatSAR, PROPERTY_TYPE_AR, STATUS_AR } from "@/lib/format";
+import { formatSAR, PROPERTY_TYPE, PROPERTY_STATUS, vocab } from "@/lib/format";
+import { getDictionary, getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,10 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin?callbackUrl=/admin");
   if (session.user.role !== "ADMIN") redirect("/dashboard");
+
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.admin;
 
   const [pending, certified, users, inquiries] = await Promise.all([
     prisma.property.findMany({
@@ -26,26 +31,24 @@ export default async function AdminPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">لوحة الأدمن</h1>
-        <p className="text-slate-600 mt-1">
-          إدارة المنصة، اعتماد التقارير الهندسية، ومراقبة النشاط.
-        </p>
+        <h1 className="text-3xl font-bold">{t.title}</h1>
+        <p className="text-slate-600 mt-1">{t.subtitle}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="عقارات قيد المراجعة" value={pending.length} tone="amber" />
-        <Stat label="عقارات معتمدة" value={certified} tone="brand" />
-        <Stat label="إجمالي المستخدمين" value={users} />
-        <Stat label="إجمالي الاستفسارات" value={inquiries} />
+        <Stat label={t.stats.pending} value={pending.length} tone="amber" />
+        <Stat label={t.stats.certified} value={certified} tone="brand" />
+        <Stat label={t.stats.users} value={users} />
+        <Stat label={t.stats.inquiries} value={inquiries} />
       </div>
 
       <div className="card">
         <div className="p-5 border-b border-slate-200">
-          <h2 className="font-bold">عقارات بانتظار الاعتماد الهندسي</h2>
+          <h2 className="font-bold">{t.pendingSection.title}</h2>
         </div>
         {pending.length === 0 ? (
           <div className="p-10 text-center text-slate-600">
-            لا توجد عقارات بانتظار المراجعة.
+            {t.pendingSection.empty}
           </div>
         ) : (
           <div className="divide-y divide-slate-200">
@@ -54,25 +57,25 @@ export default async function AdminPage() {
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold">{p.title}</div>
                   <div className="text-sm text-slate-500 mt-1">
-                    {PROPERTY_TYPE_AR[p.propertyType]} — {p.city} · {formatSAR(p.price)}
+                    {vocab(PROPERTY_TYPE, locale, p.propertyType)} — {p.city} · {formatSAR(p.price, locale)}
                     <span className="mx-2">·</span>
-                    مالك: {p.owner.name} ({p.owner.email})
+                    {t.ownerPrefix}: {p.owner.name} ({p.owner.email})
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="badge-pending">{STATUS_AR[p.status]}</span>
+                  <span className="badge-pending">{vocab(PROPERTY_STATUS, locale, p.status)}</span>
                   <Link
                     href={`/properties/${p.id}`}
                     className="btn-ghost text-sm"
                     target="_blank"
                   >
-                    عرض
+                    {t.view}
                   </Link>
                   <Link
                     href={`/admin/properties/${p.id}/certify`}
                     className="btn-primary text-sm"
                   >
-                    {p.report ? "تعديل التقرير واعتماد" : "إصدار تقرير + اعتماد"}
+                    {p.report ? t.certifyEdit : t.certifyNew}
                   </Link>
                 </div>
               </div>

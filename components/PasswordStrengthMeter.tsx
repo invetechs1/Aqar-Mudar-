@@ -1,5 +1,7 @@
 "use client";
 
+import type { Dictionary } from "@/lib/i18n";
+
 /**
  * A 4-segment password-strength meter driven by the same rules as
  * lib/password.ts. It does not gate submission — the server enforces the
@@ -14,11 +16,15 @@ export function scorePassword(v: string): number {
   return Math.min(s, 4);
 }
 
-const LABELS = ["ضعيفة", "مقبولة", "جيدة", "قوية"];
-
-export function PasswordStrengthMeter({ value }: { value: string }) {
+export function PasswordStrengthMeter({
+  value,
+  dict,
+}: {
+  value: string;
+  dict: Dictionary["passwordMeter"];
+}) {
   const s = scorePassword(value);
-  const label = value ? LABELS[Math.max(0, s - 1)] : "";
+  const label = value ? dict.levels[Math.max(0, s - 1)] : "";
   return (
     <div className="mt-2">
       <div className="flex gap-1.5">
@@ -38,7 +44,7 @@ export function PasswordStrengthMeter({ value }: { value: string }) {
         })}
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-xs text-muted">قوة كلمة المرور</span>
+        <span className="text-xs text-muted">{dict.label}</span>
         <span className="text-xs font-semibold" style={{ color: s <= 2 ? "#b28a35" : "#2f6a53" }}>
           {label}
         </span>

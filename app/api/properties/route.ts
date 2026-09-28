@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { recordConsentBatch } from "@/lib/consent";
 import { features } from "@/lib/features";
+import { apiMessages, getRequestLocale } from "@/lib/api-errors";
 
 const listingEnum = z.enum(["SALE", "PARTIAL_SALE", "INVESTMENT"]);
 
@@ -58,16 +59,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const t = apiMessages(getRequestLocale());
+
   const session = await getServerSession(authOptions);
   if (!session?.user) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    return NextResponse.json({ error: t.unauthorized }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "بيانات غير صحيحة", details: parsed.error.flatten() },
+      { error: t.invalidData, details: parsed.error.flatten() },
       { status: 400 }
     );
   }
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
   // Enforce the fractional-sale feature flag server-side.
   if (parsed.data.listingType === "PARTIAL_SALE" && !features.partialSale) {
     return NextResponse.json(
-      { error: "البيع الجزئي غير متاح حاليًا — قيد الترخيص النظامي." },
+      { error: t.partialSaleUnavailable },
       { status: 400 }
     );
   }

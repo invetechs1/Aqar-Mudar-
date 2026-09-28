@@ -1,0 +1,47 @@
+# Production deploy from a pre-built image (docker load -i dist/aqar-mudar.tar)
+# instead of building from source — use this on a server that only has the
+# image tar + this file + a .env, not the full repo.
+#
+#   docker load -i aqar-mudar.tar
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# On a shared/multi-tenant host, Postgres is deliberately NOT published to a
+# host port — only the `app` service needs one, for the reverse proxy to
+# reach it. Everything else stays on the private compose network.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aqarmudar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — generate with openssl rand -base64 24}
+      POSTGRES_DB: aqarmudar
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aqarmudar -d aqarmudar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: aqar-mudar:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://aqarmudar:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/aqarmudar
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL must be set to the real public URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set — generate with openssl rand -base64 32}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/public/uploads
+
+volumes:
+  db_data:
+  uploads:

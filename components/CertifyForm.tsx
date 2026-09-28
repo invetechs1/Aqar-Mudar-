@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { CONDITION, RISK, vocab } from "@/lib/format";
 
 type Report = {
   structuralCondition: string;
@@ -19,9 +21,13 @@ type Report = {
 } | null;
 
 export function CertifyForm({
+  dict,
+  locale,
   propertyId,
   existing,
 }: {
+  dict: Dictionary["certify"];
+  locale: Locale;
   propertyId: string;
   existing: Report;
 }) {
@@ -64,17 +70,22 @@ export function CertifyForm({
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "فشل الاعتماد");
+      setError(data.error ?? dict.errors.genericFail);
       setLoading(false);
     }
   }
 
   const conditions = ["EXCELLENT", "GOOD", "FAIR", "POOR"];
   const conditionLabels: Record<string, string> = {
-    EXCELLENT: "ممتاز",
-    GOOD: "جيد",
-    FAIR: "مقبول",
-    POOR: "ضعيف",
+    EXCELLENT: vocab(CONDITION, locale, "EXCELLENT"),
+    GOOD: vocab(CONDITION, locale, "GOOD"),
+    FAIR: vocab(CONDITION, locale, "FAIR"),
+    POOR: vocab(CONDITION, locale, "POOR"),
+  };
+  const riskLabels: Record<string, string> = {
+    LOW: vocab(RISK, locale, "LOW"),
+    MEDIUM: vocab(RISK, locale, "MEDIUM"),
+    HIGH: vocab(RISK, locale, "HIGH"),
   };
 
   return (
@@ -82,41 +93,41 @@ export function CertifyForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           name="structuralCondition"
-          label="الحالة الإنشائية"
+          label={dict.fields.structural}
           options={conditions}
           labels={conditionLabels}
           defaultValue={existing?.structuralCondition ?? "GOOD"}
         />
         <Select
           name="finishingQuality"
-          label="جودة التشطيبات"
+          label={dict.fields.finishing}
           options={conditions}
           labels={conditionLabels}
           defaultValue={existing?.finishingQuality ?? "GOOD"}
         />
         <Select
           name="electricalCondition"
-          label="الأنظمة الكهربائية"
+          label={dict.fields.electrical}
           options={conditions}
           labels={conditionLabels}
           defaultValue={existing?.electricalCondition ?? "GOOD"}
         />
         <Select
           name="mechanicalCondition"
-          label="الأنظمة الميكانيكية"
+          label={dict.fields.mechanical}
           options={conditions}
           labels={conditionLabels}
           defaultValue={existing?.mechanicalCondition ?? "GOOD"}
         />
         <Select
           name="riskLevel"
-          label="مستوى المخاطر"
+          label={dict.fields.risk}
           options={["LOW", "MEDIUM", "HIGH"]}
-          labels={{ LOW: "منخفض", MEDIUM: "متوسط", HIGH: "مرتفع" }}
+          labels={riskLabels}
           defaultValue={existing?.riskLevel ?? "LOW"}
         />
         <div>
-          <label className="label">العمر الافتراضي (سنة)</label>
+          <label className="label">{dict.fields.lifespan}</label>
           <input
             name="estimatedLifespan"
             type="number"
@@ -130,7 +141,7 @@ export function CertifyForm({
       </div>
 
       <div>
-        <label className="label">التوصيات الهندسية</label>
+        <label className="label">{dict.fields.recommendations}</label>
         <textarea
           name="recommendations"
           className="input min-h-[120px]"
@@ -141,11 +152,11 @@ export function CertifyForm({
 
       <div className="rounded-lg bg-brand-50 border border-brand-200 p-4 space-y-4">
         <div className="font-semibold text-brand-800">
-          دراسة رفع القيمة (اختياري)
+          {dict.upliftSection.title}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">نسبة رفع القيمة المتوقعة (%)</label>
+            <label className="label">{dict.upliftSection.percent}</label>
             <input
               name="valueUpliftPotential"
               type="number"
@@ -157,7 +168,7 @@ export function CertifyForm({
             />
           </div>
           <div>
-            <label className="label">التكلفة التقديرية (ر.س)</label>
+            <label className="label">{dict.upliftSection.cost}</label>
             <input
               name="upliftCost"
               type="number"
@@ -167,7 +178,7 @@ export function CertifyForm({
             />
           </div>
           <div>
-            <label className="label">مدة التنفيذ (شهر)</label>
+            <label className="label">{dict.upliftSection.duration}</label>
             <input
               name="upliftDurationMonths"
               type="number"
@@ -177,7 +188,7 @@ export function CertifyForm({
             />
           </div>
           <div>
-            <label className="label">العائد المتوقع بعد التطوير (%)</label>
+            <label className="label">{dict.upliftSection.expectedReturn}</label>
             <input
               name="expectedReturnPct"
               type="number"
@@ -189,7 +200,7 @@ export function CertifyForm({
           </div>
         </div>
         <div>
-          <label className="label">نطاق الأعمال المقترحة</label>
+          <label className="label">{dict.upliftSection.scope}</label>
           <textarea
             name="upliftScope"
             className="input min-h-[80px]"
@@ -201,7 +212,7 @@ export function CertifyForm({
       {error && <div className="text-sm text-rose-600">{error}</div>}
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
-        {loading ? "جارٍ الاعتماد..." : "✓ اعتماد ونشر العقار"}
+        {loading ? dict.submitting : dict.submit}
       </button>
     </form>
   );

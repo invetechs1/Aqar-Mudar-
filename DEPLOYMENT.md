@@ -6,8 +6,10 @@ Docker image and a `docker-compose.yml` that runs the app alongside its database
 
 This guide covers: prerequisites, environment configuration, the full Docker image
 lifecycle (build / save / load / run), running it with Docker Compose, database
-migrations and seeding, verifying a successful deployment, and notes on issues that
-were found and fixed while validating this flow end‑to‑end.
+migrations and seeding, verifying a successful deployment, notes on issues that
+were found and fixed while validating this flow end‑to‑end (§7), and the actual
+production deployment process for the live shared server at
+`aqar-mudr.bassir.net` via `deploy.sh` / `remote-deploy.sh` (§8–9).
 
 ---
 
@@ -262,3 +264,163 @@ After these fixes, a full clean-slate deployment (`docker compose down -v` then
 `docker compose up --build -d`) was verified to: build successfully, apply the
 migration automatically, pass `/api/health`, and serve `/properties` and
 `/api/properties` without errors, both empty and after seeding.
+
+---
+
+## 8. Deploying to the production server (aqar-mudr.bassir.net)
+
+This app is deployed on a **shared, multi-tenant server** (`13.140.138.252`) that
+also hosts ~40 unrelated Bassir client projects. Two things are specific to this
+host and must not be assumed to generalize to a dedicated box:
+
+- **TLS termination and the reverse proxy live outside this project**, inside
+  another project's nginx container (`bassir-erp-app-nginx-1`, which owns the host's
+  port 80/443). Its config (`/root/bassir-erp-app/nginx.conf`) has a server block for
+  `aqar-mudr.bassir.net` that proxies to `http://172.17.0.1:8091` — so this app's
+  `app` service must always publish host port **8091** (`APP_PORT` in `.env`).
+  Changing that port means also editing that other project's nginx config, which is
+  outside this repo's control.
+- **Postgres is not published to a host port.** `docker-compose.prod.yml` (unlike
+  the local-dev `docker-compose.yml`) has no `DB_PORT` mapping — on a host this
+  shared, nothing outside the compose network needs to reach it directly.
+
+Two scripts automate the whole flow, both committed at the repo root:
+- **`deploy.sh`** — runs on your machine: builds, saves, ships the tar +
+  `remote-deploy.sh` + `docker-compose.prod.yml` to the server, then triggers the
+  remote half.
+- **`remote-deploy.sh`** — the actual cutover logic; runs *on* the server. Also
+  usable standalone if a tar is already sitting there. `deploy.sh` calls this rather
+  than duplicating its logic, so a bugfix here never needs to be made twice.
+
+### 8.1 One command, end to end
+
+```bash
+bash deploy.sh
+```
+Prompts for the SSH password 2–3 times unless you've set up
+`ssh-copy-id root@13.140.138.252` first.
+
+### 8.2 Or, the exact steps by hand
+
+**1. Delete the existing local image for this project** — so the build can't
+accidentally reuse stale cached layers, and `docker images` only ever shows what you
+actually intend to ship:
+
+```bash
+docker compose down 2>/dev/null   # stop any local containers using it first
+docker images --filter=reference='aqar-mudar*'
+docker rmi aqar-mudar:latest      # repeat for any other tags/IDs the above listed
+```
+
+**2. Build the new image:**
+
+```bash
+docker build -t aqar-mudar:latest .
+```
+
+**3. Save it to a tar file:**
+
+```bash
+mkdir -p dist
+docker save -o dist/aqar-mudar.tar aqar-mudar:latest
+```
+
+**4. Send the tar and both server-side files to the production server:**
+
+```bash
+scp dist/aqar-mudar.tar remote-deploy.sh docker-compose.prod.yml root@13.140.138.252:/root/aqar-mudr-web/
+```
+
+**5. Run the deploy script on the server:**
+
+```bash
+ssh root@13.140.138.252 "cd /root/aqar-mudr-web && bash remote-deploy.sh"
+```
+
+**6. Verify:**
+
+```bash
+curl -s https://aqar-mudr.bassir.net/api/health
+```
+(On Windows PowerShell, use `curl.exe` explicitly — plain `curl` is aliased to
+`Invoke-WebRequest`, which takes different flags and will error asking for a `-Uri`.)
+
+### 8.3 What `remote-deploy.sh` actually does on the server
+
+Run from `/root/aqar-mudr-web`, with `aqar-mudar.tar` and `docker-compose.prod.yml`
+already there:
+
+1. Creates `.env` with a fresh `NEXTAUTH_SECRET` / `POSTGRES_PASSWORD` **only if one
+   doesn't already exist** — a redeploy never rotates secrets out from under a
+   running app.
+2. Records the image ID this deploy is about to replace.
+3. `docker load`s the new tar (retags `aqar-mudar:latest` to the new image).
+4. `docker compose up -d --force-recreate app` — recreates *only* the `app`
+   container; `db` and its volume are never touched.
+5. Polls `/api/health` on `localhost:8091` for up to 30s and prints the result
+   (warns rather than aborting if it's slow, so you can still inspect logs instead
+   of the script papering over a real failure).
+6. Deletes the **specific** old image it just replaced — not a blanket
+   `docker image prune`, since this server hosts ~40 other unrelated projects whose
+   dangling images this script has no business touching.
+
+### 8.4 Rollback / troubleshooting
+
+Nothing here is destructive by default. If a deploy looks wrong:
+
+```bash
+ssh root@13.140.138.252 "docker compose -p aqar-mudr-web -f /root/aqar-mudr-web/docker-compose.prod.yml logs --tail=100 app"
+```
+
+To go back to a previous build, `docker load` a previously-saved tar on the server
+and re-run `remote-deploy.sh`.
+
+This deployment also **replaced** an older `aqar-mudar-v2` stack (a separate
+Django + Celery + frontend architecture) that previously served this domain. Its
+containers were stopped with `docker compose -f /root/aqar-mudar-v2/docker-compose.yml down`
+(no `-v`, so its Postgres/Redis volumes still exist on disk) — restorable with
+`docker compose -f /root/aqar-mudar-v2/docker-compose.yml up -d` if that rewrite is
+ever reverted.
+
+---
+
+## 9. Issues found and fixed during the production rollout
+
+Two real, blocking issues surfaced only when deploying to the actual shared server
+(neither reproduces in local/Compose testing, which is why §7 didn't catch them):
+
+1. **`port is already allocated` on 8091.** The first `remote-deploy.sh` run failed
+   with `Bind for 0.0.0.0:8091 failed: port is already allocated`. The old
+   `aqar-mudar-v2-nginx-1` container (the stack this deployment replaces) was still
+   running and holding that port. `remote-deploy.sh` intentionally does not stop
+   unrelated stacks on its own — bringing down whatever currently owns the target
+   port is a one-time manual step before the *first* deploy onto a port another
+   project is already using:
+   `docker compose -f /root/aqar-mudar-v2/docker-compose.yml down`.
+
+2. **`P1013: invalid port number in database URL.`** The app container
+   crash-looped on startup. `docker-compose.prod.yml` builds `DATABASE_URL` by
+   interpolating `POSTGRES_PASSWORD` directly into a
+   `postgresql://user:PASSWORD@host:port/db` string; the password was originally
+   generated with `openssl rand -base64 24`, and base64's alphabet includes `/`,
+   which breaks URL parsing when it lands in the password (it reads as a path
+   separator, corrupting everything after it — including the port). Fixed by
+   switching both `deploy.sh` and `remote-deploy.sh` to `openssl rand -hex 24`,
+   whose alphabet (`0-9a-f`) is always URL-safe. Recovery required wiping the
+   just-created (still-empty — no real data yet) `db_data` volume and `.env`, since
+   Postgres only applies `POSTGRES_PASSWORD` on first init; changing `.env` alone
+   doesn't retroactively change a password already baked into an initialized data
+   directory.
+
+3. **Headings invisible on dark backgrounds** (UI bug, not a deploy bug, but found
+   via this same rollout). `app/globals.css` had a base-layer rule —
+   `h1, h2, h3, h4 { @apply text-ink font-bold; }` — that sets color directly on
+   every heading element. Because it's a direct rule on the element itself (not an
+   inherited value), it beats a dark-background ancestor's `color: white` regardless
+   of the ancestor's specificity — direct rules always win over inheritance.
+   Symptom: the homepage hero headline, the "List your property now" CTA heading,
+   and the sign-in/sign-up headline all rendered near-black text on the dark green
+   brand background. Fixed with a scoped override in `app/globals.css`
+   (`.text-white h1, .panel-dark h2, ... { color: inherit; }`) rather than patching
+   each heading individually, so the same class of bug can't resurface the next time
+   someone adds a heading inside a dark surface.

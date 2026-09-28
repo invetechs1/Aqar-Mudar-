@@ -5,14 +5,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { ImageUploader } from "./ImageUploader";
 import { LocationPicker } from "./LocationPicker";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatNumber, PROPERTY_TYPE, LISTING_TYPE, vocab } from "@/lib/format";
 
-const STEPS = [
-  { n: 1, label: "البيانات الأساسية" },
-  { n: 2, label: "الموقع والصور" },
-  { n: 3, label: "المراجعة" },
-];
-
-export function PropertyForm() {
+export function PropertyForm({ dict, locale }: { dict: Dictionary["properties"]["form"]; locale: Locale }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
@@ -36,6 +32,12 @@ export function PropertyForm() {
     yearBuilt: "",
   });
 
+  const STEPS = [
+    { n: 1, label: dict.steps.basics },
+    { n: 2, label: dict.steps.locationPhotos },
+    { n: 3, label: dict.steps.review },
+  ];
+
   function update<K extends keyof typeof form>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -43,7 +45,7 @@ export function PropertyForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!attestOwner || !attestData) {
-      setError("يجب الإقرار بجميع البنود قبل الحفظ.");
+      setError(dict.errors.consentRequired);
       return;
     }
     setError(null);
@@ -82,7 +84,7 @@ export function PropertyForm() {
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "فشل إنشاء العقار");
+      setError(data.error ?? dict.errors.genericFail);
       setLoading(false);
     }
   }
@@ -126,7 +128,7 @@ export function PropertyForm() {
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}
           >
             <div style={{ gridColumn: "1 / -1" }}>
-              <label className="label">عنوان العقار</label>
+              <label className="label">{dict.title}</label>
               <input
                 className="input"
                 required
@@ -137,7 +139,7 @@ export function PropertyForm() {
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
-              <label className="label">الوصف</label>
+              <label className="label">{dict.description}</label>
               <textarea
                 className="input min-h-[120px]"
                 required
@@ -148,37 +150,37 @@ export function PropertyForm() {
             </div>
 
             <div>
-              <label className="label">نوع العقار</label>
+              <label className="label">{dict.propertyType}</label>
               <select
                 className="input"
                 value={form.propertyType}
                 onChange={(e) => update("propertyType", e.target.value)}
               >
-                <option value="APARTMENT">شقة</option>
-                <option value="VILLA">فيلا</option>
-                <option value="LAND">أرض</option>
-                <option value="COMMERCIAL">تجاري</option>
-                <option value="BUILDING">مبنى</option>
+                <option value="APARTMENT">{vocab(PROPERTY_TYPE, locale, "APARTMENT")}</option>
+                <option value="VILLA">{vocab(PROPERTY_TYPE, locale, "VILLA")}</option>
+                <option value="LAND">{vocab(PROPERTY_TYPE, locale, "LAND")}</option>
+                <option value="COMMERCIAL">{vocab(PROPERTY_TYPE, locale, "COMMERCIAL")}</option>
+                <option value="BUILDING">{vocab(PROPERTY_TYPE, locale, "BUILDING")}</option>
               </select>
             </div>
 
             <div>
-              <label className="label">نوع العرض</label>
+              <label className="label">{dict.listingType}</label>
               <select
                 className="input"
                 value={form.listingType}
                 onChange={(e) => update("listingType", e.target.value)}
               >
-                <option value="SALE">للبيع</option>
-                <option value="INVESTMENT">استثمار</option>
+                <option value="SALE">{vocab(LISTING_TYPE, locale, "SALE")}</option>
+                <option value="INVESTMENT">{vocab(LISTING_TYPE, locale, "INVESTMENT")}</option>
               </select>
               <p className="text-xs text-muted mt-2">
-                البيع الجزئي غير متاح حاليًا — قيد الترخيص النظامي.
+                {dict.listingNote}
               </p>
             </div>
 
             <div>
-              <label className="label">السعر (ر.س)</label>
+              <label className="label">{dict.price}</label>
               <input
                 type="number"
                 className="input"
@@ -190,7 +192,7 @@ export function PropertyForm() {
               />
             </div>
             <div>
-              <label className="label">المساحة (م²)</label>
+              <label className="label">{dict.area}</label>
               <input
                 type="number"
                 className="input"
@@ -201,7 +203,7 @@ export function PropertyForm() {
               />
             </div>
             <div>
-              <label className="label">عدد الغرف</label>
+              <label className="label">{dict.bedrooms}</label>
               <input
                 type="number"
                 className="input"
@@ -211,7 +213,7 @@ export function PropertyForm() {
               />
             </div>
             <div>
-              <label className="label">عدد الحمامات</label>
+              <label className="label">{dict.bathrooms}</label>
               <input
                 type="number"
                 className="input"
@@ -221,7 +223,7 @@ export function PropertyForm() {
               />
             </div>
             <div>
-              <label className="label">سنة البناء</label>
+              <label className="label">{dict.yearBuilt}</label>
               <input
                 type="number"
                 className="input"
@@ -238,7 +240,7 @@ export function PropertyForm() {
           <div className="space-y-6">
             <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
               <div>
-                <label className="label">المدينة</label>
+                <label className="label">{dict.city}</label>
                 <input
                   className="input"
                   required
@@ -247,7 +249,7 @@ export function PropertyForm() {
                 />
               </div>
               <div>
-                <label className="label">الحي</label>
+                <label className="label">{dict.district}</label>
                 <input
                   className="input"
                   value={form.district}
@@ -255,7 +257,7 @@ export function PropertyForm() {
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label className="label">العنوان التفصيلي</label>
+                <label className="label">{dict.address}</label>
                 <input
                   className="input"
                   value={form.address}
@@ -265,7 +267,7 @@ export function PropertyForm() {
             </div>
 
             <div>
-              <label className="label">صور العقار</label>
+              <label className="label">{dict.photosLabel}</label>
               <div
                 style={{
                   border: "1.5px dashed #cbd8d3",
@@ -274,17 +276,18 @@ export function PropertyForm() {
                   background: "#fafcfb",
                 }}
               >
-                <ImageUploader value={images} onChange={setImages} />
+                <ImageUploader value={images} onChange={setImages} dict={dict.uploader} />
                 <p className="text-xs text-muted mt-3">
-                  تُحوَّل الصور تلقائيًا إلى WebP ويُعاد تحجيمها للأداء.
+                  {dict.photosHint}
                 </p>
               </div>
             </div>
 
             <div>
-              <label className="label">موقع العقار على الخريطة</label>
+              <label className="label">{dict.mapLabel}</label>
               <LocationPicker
                 onChange={(lat, lng) => setCoords({ lat, lng })}
+                dict={dict.locationPicker}
               />
             </div>
           </div>
@@ -292,18 +295,21 @@ export function PropertyForm() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="font-bold" style={{ fontSize: 20 }}>مراجعة وإقرار</h3>
+            <h3 className="font-bold" style={{ fontSize: 20 }}>{dict.reviewTitle}</h3>
             <div
               className="grid gap-2 text-sm"
               style={{ background: "#f5f8f6", borderRadius: 14, padding: 20 }}
             >
-              <Row k="العنوان" v={form.title || "—"} />
-              <Row k="النوع / العرض" v={`${form.propertyType} / ${form.listingType}`} />
-              <Row k="السعر" v={form.price ? `${Number(form.price).toLocaleString("ar-SA")} ر.س` : "—"} />
-              <Row k="المساحة" v={form.area ? `${form.area} م²` : "—"} />
-              <Row k="المدينة / الحي" v={`${form.city || "—"}${form.district ? ` — ${form.district}` : ""}`} />
-              <Row k="عدد الصور" v={String(images.length)} />
-              <Row k="الموقع" v={coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : "غير محدد"} />
+              <Row k={dict.rows.title} v={form.title || dict.rows.empty} />
+              <Row k={dict.rows.typeListing} v={`${form.propertyType} / ${form.listingType}`} />
+              <Row
+                k={dict.rows.price}
+                v={form.price ? `${formatNumber(Number(form.price), locale)} ${locale === "ar" ? "ر.س" : "SAR"}` : dict.rows.empty}
+              />
+              <Row k={dict.rows.area} v={form.area ? `${form.area} ${locale === "ar" ? "م²" : "m²"}` : dict.rows.empty} />
+              <Row k={dict.rows.cityDistrict} v={`${form.city || dict.rows.empty}${form.district ? ` — ${form.district}` : ""}`} />
+              <Row k={dict.rows.photoCount} v={String(images.length)} />
+              <Row k={dict.rows.location} v={coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : dict.rows.notSet} />
             </div>
 
             <div
@@ -318,7 +324,7 @@ export function PropertyForm() {
                   style={{ accentColor: "#2f6a53", marginTop: 4 }}
                 />
                 <span>
-                  أُقرّ بأنني <strong>مالك العقار</strong> أو وكيل مفوّض عنه، وأملك حق تسويقه على المنصة.
+                  {dict.attestOwnerPrefix} <strong>{dict.attestOwnerStrong}</strong> {dict.attestOwnerSuffix}
                 </span>
               </label>
               <label className="flex items-start gap-3 text-sm">
@@ -329,12 +335,12 @@ export function PropertyForm() {
                   style={{ accentColor: "#2f6a53", marginTop: 4 }}
                 />
                 <span>
-                  أُقرّ بأن جميع البيانات الواردة أعلاه <strong>صحيحة ودقيقة</strong>، وأتحمّل المسؤولية القانونية عن أي معلومات مضلّلة.
+                  {dict.attestDataPrefix} <strong>{dict.attestDataStrong}</strong>{dict.attestDataSuffix}
                 </span>
               </label>
               <p className="text-xs text-muted mt-4">
-                يُسجَّل هذا الإقرار مع التاريخ وعنوان IP في سجل التدقيق.{" "}
-                <Link href="/legal/terms" className="underline">الشروط والأحكام</Link>
+                {dict.attestNotePrefix}{" "}
+                <Link href="/legal/terms" className="underline">{dict.attestNoteLink}</Link>
               </p>
             </div>
           </div>
@@ -345,14 +351,14 @@ export function PropertyForm() {
         <div className="flex flex-wrap items-center justify-between gap-3 mt-6">
           {step > 1 ? (
             <button type="button" className="btn-secondary" onClick={() => setStep((s) => (s - 1) as 1 | 2)}>
-              ← السابق
+              {locale === "ar" ? `${dict.back} →` : `← ${dict.back}`}
             </button>
           ) : (
             <span />
           )}
           {step < 3 ? (
             <button type="button" className="btn-primary" onClick={() => setStep((s) => (s + 1) as 2 | 3)}>
-              التالي ←
+              {locale === "ar" ? `${dict.next} ←` : `${dict.next} →`}
             </button>
           ) : (
             <button
@@ -361,7 +367,7 @@ export function PropertyForm() {
               className="btn-primary"
               style={{ opacity: !attestOwner || !attestData ? 0.5 : 1 }}
             >
-              {loading ? "جارٍ الحفظ..." : "حفظ العقار"}
+              {loading ? dict.saving : dict.save}
             </button>
           )}
         </div>

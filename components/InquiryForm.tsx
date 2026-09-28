@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { Dictionary } from "@/lib/i18n";
 
-export function InquiryForm({ propertyId }: { propertyId: string }) {
+export function InquiryForm({ propertyId, dict }: { propertyId: string; dict: Dictionary["inquiry"] }) {
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "ok" | "err">("idle");
@@ -23,7 +24,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
       setContact("");
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "حدث خطأ");
+      setError(data.error ?? dict.errors.generic);
       setState("err");
     }
   }
@@ -31,7 +32,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
   if (state === "ok") {
     return (
       <div className="rounded-lg bg-brand-50 border border-brand-200 p-4 text-sm text-brand-800">
-        شكرًا لك — تم إرسال الاستفسار وسيتواصل معك المالك قريبًا.
+        {dict.successMessage}
       </div>
     );
   }
@@ -39,23 +40,23 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <div>
-        <label className="label">اسمك أو رقم التواصل</label>
+        <label className="label">{dict.contactLabel}</label>
         <input
           className="input"
           value={contact}
           onChange={(e) => setContact(e.target.value)}
           required
-          placeholder="مثال: 05xxxxxxxx"
+          placeholder={dict.contactPlaceholder}
         />
       </div>
       <div>
-        <label className="label">استفسارك</label>
+        <label className="label">{dict.messageLabel}</label>
         <textarea
           className="input min-h-[100px]"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           required
-          placeholder="أرغب بمعرفة المزيد عن هذا العقار..."
+          placeholder={dict.messagePlaceholder}
         />
       </div>
       {error && <div className="text-sm text-rose-600">{error}</div>}
@@ -64,7 +65,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
         disabled={state === "loading"}
         className="btn-primary w-full"
       >
-        {state === "loading" ? "جارٍ الإرسال..." : "إرسال استفسار"}
+        {state === "loading" ? dict.submitting : dict.submit}
       </button>
     </form>
   );

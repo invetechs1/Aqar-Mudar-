@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+/**
+ * `.env` files have no concept of "unset" — an unconfigured optional URL
+ * (S3, Nafath, ...) is written as `KEY=""`, not omitted. Plain
+ * `z.string().url().optional()` treats that empty string as a present-but-
+ * invalid URL and fails validation, which previously broke `npm run build`
+ * out of the box against the shipped `.env.example`. Normalize "" to
+ * undefined before the URL check so an unconfigured integration is actually
+ * optional.
+ */
+function optionalUrl() {
+  return z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional());
+}
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -10,12 +23,12 @@ const schema = z.object({
 
   // Storage
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
-  S3_ENDPOINT: z.string().url().optional(),
+  S3_ENDPOINT: optionalUrl(),
   S3_REGION: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
-  S3_PUBLIC_URL: z.string().url().optional(),
+  S3_PUBLIC_URL: optionalUrl(),
 
   // Email
   EMAIL_DRIVER: z.enum(["console", "resend"]).default("console"),
@@ -45,7 +58,7 @@ const schema = z.object({
   NEXT_PUBLIC_GA_ID: z.string().optional(),
 
   // Nafath (mock in dev, real in prod)
-  NAFATH_API_URL: z.string().url().optional(),
+  NAFATH_API_URL: optionalUrl(),
   NAFATH_CLIENT_ID: z.string().optional(),
   NAFATH_CLIENT_SECRET: z.string().optional(),
 
@@ -55,6 +68,15 @@ const schema = z.object({
 
 type EnvSchema = z.infer<typeof schema>;
 
+// Next.js dev re-evaluates route modules per request, so this file's
+// top-level `loadEnv()` call can re-run many times per server lifetime.
+// Guard the dev warning on `globalThis` (survives that re-evaluation, unlike
+// a module-local flag) so it prints once instead of flooding the terminal.
+declare global {
+  // eslint-disable-next-line no-var
+  var __aqarEnvWarned: boolean | undefined;
+}
+
 function loadEnv(): EnvSchema {
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
@@ -62,10 +84,13 @@ function loadEnv(): EnvSchema {
       console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
       throw new Error("Environment validation failed. See errors above.");
     } else {
-      console.warn(
-        "⚠️  Some environment variables are invalid or missing (running in dev):",
-        parsed.error.flatten().fieldErrors
-      );
+      if (!globalThis.__aqarEnvWarned) {
+        globalThis.__aqarEnvWarned = true;
+        console.warn(
+          "⚠️  Some environment variables are invalid or missing (running in dev):",
+          parsed.error.flatten().fieldErrors
+        );
+      }
       return schema.parse({
         NODE_ENV: process.env.NODE_ENV ?? "development",
         DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://user:pass@localhost:5432/db",

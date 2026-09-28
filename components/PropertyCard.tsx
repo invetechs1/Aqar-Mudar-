@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { formatSAR, PROPERTY_TYPE_AR, LISTING_AR } from "@/lib/format";
+import { formatSAR, LISTING_TYPE, PROPERTY_TYPE, vocab } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
+
+const CARD_TEXT: Record<Locale, { certifiedBadge: string; areaUnit: string; bedroomsSuffix: string }> = {
+  ar: { certifiedBadge: "✓ العراب Certified", areaUnit: "م²", bedroomsSuffix: "غرف" },
+  en: { certifiedBadge: "✓ Alarrab Certified", areaUnit: "m²", bedroomsSuffix: "bd" },
+};
 
 type Props = {
   property: {
@@ -15,9 +21,12 @@ type Props = {
     isCertified: boolean;
     images: unknown;
   };
+  locale?: Locale;
 };
 
-export function PropertyCard({ property }: Props) {
+export function PropertyCard({ property, locale }: Props) {
+  const l: Locale = locale ?? "ar";
+  const dict = CARD_TEXT[l];
   const images: string[] = Array.isArray(property.images)
     ? (property.images as string[])
     : [];
@@ -43,10 +52,10 @@ export function PropertyCard({ property }: Props) {
           style={{ insetInlineStart: "auto", insetInlineEnd: 12 }}
         >
           {property.isCertified && (
-            <span className="chip-certified">✓ العراب Certified</span>
+            <span className="chip-certified">{dict.certifiedBadge}</span>
           )}
           <span className="chip-listing">
-            {LISTING_AR[property.listingType] ?? property.listingType}
+            {vocab(LISTING_TYPE, l, property.listingType)}
           </span>
         </div>
       </div>
@@ -55,7 +64,7 @@ export function PropertyCard({ property }: Props) {
           {property.title}
         </h3>
         <div className="text-muted mt-1.5" style={{ fontSize: 13 }}>
-          {PROPERTY_TYPE_AR[property.propertyType] ?? property.propertyType} — {property.city}
+          {vocab(PROPERTY_TYPE, l, property.propertyType)} — {property.city}
           {property.district ? ` · ${property.district}` : ""}
         </div>
         <div
@@ -63,10 +72,11 @@ export function PropertyCard({ property }: Props) {
           style={{ borderTop: "1px solid #eef2f0" }}
         >
           <div className="tabular" style={{ color: "#2f6a53", fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>
-            {formatSAR(property.price)}
+            {formatSAR(property.price, l)}
           </div>
           <div className="text-muted tabular" style={{ fontSize: 13 }}>
-            {property.area} م²{property.bedrooms ? ` · ${property.bedrooms} غرف` : ""}
+            {property.area} {dict.areaUnit}
+            {property.bedrooms ? ` · ${property.bedrooms} ${dict.bedroomsSuffix}` : ""}
           </div>
         </div>
       </div>

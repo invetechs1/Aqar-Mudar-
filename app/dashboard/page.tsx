@@ -3,13 +3,18 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatSAR, STATUS_AR, PROPERTY_TYPE_AR } from "@/lib/format";
+import { formatSAR, PROPERTY_STATUS, PROPERTY_TYPE, vocab } from "@/lib/format";
+import { getDictionary, getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin?callbackUrl=/dashboard");
+
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.dashboard;
 
   const [me, properties, inquiries] = await Promise.all([
     prisma.user.findUnique({
@@ -46,18 +51,18 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="font-extrabold" style={{ fontSize: 34, letterSpacing: "-0.01em" }}>
-            لوحة التحكم
+            {t.title}
           </h1>
           <p className="mt-1 text-muted-2" style={{ fontSize: 15 }}>
-            مرحبًا {me?.name} — دورك: {me?.role}
+            {t.welcomePrefix} {me?.name} — {t.roleLabel}: {me?.role}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/verify" className="btn-secondary rounded-full">
-            التحقق من الحساب
+            {t.completeVerification}
           </Link>
           <Link href="/properties/new" className="btn-primary rounded-full">
-            + إضافة عقار
+            {t.addProperty}
           </Link>
         </div>
       </div>
@@ -82,13 +87,15 @@ export default async function DashboardPage() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-bold" style={{ fontSize: 15 }}>
-              أكمل التحقق من حسابك لفتح كامل صلاحيات المنصة
+              {t.kycBanner.title}
             </div>
             <div className="text-sm mt-1" style={{ color: "#b9cfc4" }}>
-              التحقق من نفاذ إلزامي قبل أي معاملة استثمارية، والتحقق من الجوال يرفع أمان حسابك.
+              {t.kycBanner.subtitle}
             </div>
           </div>
-          <Link href="/dashboard/verify" className="btn-gold">أكمل التحقق ←</Link>
+          <Link href="/dashboard/verify" className="btn-gold">
+            {t.kycBanner.cta} {dict.common.arrow}
+          </Link>
         </div>
       )}
 
@@ -97,10 +104,10 @@ export default async function DashboardPage() {
         className="grid gap-4 mb-8"
         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}
       >
-        <Stat label="إجمالي العقارات" value={stats.total} />
-        <Stat label="عقارات معتمدة" value={stats.certified} tone="brand" />
-        <Stat label="قيد المراجعة" value={stats.pending} tone="warn" />
-        <Stat label="استفسارات جديدة" value={stats.inquiries} />
+        <Stat label={t.stats.total} value={stats.total} />
+        <Stat label={t.stats.certified} value={stats.certified} tone="brand" />
+        <Stat label={t.stats.pending} value={stats.pending} tone="warn" />
+        <Stat label={t.stats.inquiries} value={stats.inquiries} />
       </div>
 
       {/* Panels */}
@@ -113,16 +120,16 @@ export default async function DashboardPage() {
             className="flex items-center justify-between"
             style={{ padding: "18px 24px", borderBottom: "1px solid #eef2f0" }}
           >
-            <h2 className="font-bold" style={{ fontSize: 16 }}>عقاراتي</h2>
+            <h2 className="font-bold" style={{ fontSize: 16 }}>{t.myProperties.title}</h2>
             <Link href="/properties" className="text-xs text-green-700 font-semibold">
-              عرض المنصة →
+              {t.myProperties.viewPlatform} {dict.common.arrow}
             </Link>
           </div>
           {properties.length === 0 ? (
             <div className="p-10 text-center text-muted-2 text-sm">
-              لم تُضِف عقارات بعد.{" "}
+              {t.myProperties.empty}{" "}
               <Link href="/properties/new" className="text-green-700 font-semibold">
-                أضف عقارك الأول
+                {t.myProperties.addFirst}
               </Link>
             </div>
           ) : (
@@ -149,15 +156,15 @@ export default async function DashboardPage() {
                         {p.title}
                       </div>
                       <div className="text-xs text-muted mt-1 tabular">
-                        {PROPERTY_TYPE_AR[p.propertyType]} · {p.city} · {formatSAR(p.price)}
+                        {vocab(PROPERTY_TYPE, locale, p.propertyType)} · {p.city} · {formatSAR(p.price, locale)}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className={p.isCertified ? "chip-ok" : "chip-warn"}>
-                        {STATUS_AR[p.status] ?? p.status}
+                        {vocab(PROPERTY_STATUS, locale, p.status)}
                       </span>
                       <span className="text-xs text-muted tabular">
-                        {p._count.inquiries} استفسار
+                        {p._count.inquiries} {t.myProperties.inquiriesSuffix}
                       </span>
                     </div>
                   </Link>
@@ -169,11 +176,11 @@ export default async function DashboardPage() {
 
         <div className="card overflow-hidden">
           <div style={{ padding: "18px 24px", borderBottom: "1px solid #eef2f0" }}>
-            <h2 className="font-bold" style={{ fontSize: 16 }}>آخر الاستفسارات</h2>
+            <h2 className="font-bold" style={{ fontSize: 16 }}>{t.recentInquiries.title}</h2>
           </div>
           {inquiries.length === 0 ? (
             <div className="p-10 text-center text-muted-2 text-sm">
-              لا توجد استفسارات بعد.
+              {t.recentInquiries.empty}
             </div>
           ) : (
             <div>
@@ -191,7 +198,7 @@ export default async function DashboardPage() {
                       {q.property.title}
                     </Link>
                     <span className="text-xs text-muted tabular">
-                      {new Date(q.createdAt).toLocaleDateString("ar-SA")}
+                      {new Date(q.createdAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-2 font-light" style={{ lineHeight: 1.7 }}>

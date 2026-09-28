@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { stripe, isStripeConfigured } from "@/lib/stripe";
 import { hasCompleteConsent } from "@/lib/consent";
 import { features } from "@/lib/features";
+import { apiMessages, getRequestLocale } from "@/lib/api-errors";
 
 const schema = z.object({
   propertyId: z.string().min(1),
@@ -13,13 +14,15 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const t = apiMessages(getRequestLocale());
+
   const session = await getServerSession(authOptions);
   if (!session?.user) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    return NextResponse.json({ error: t.unauthorized }, { status: 401 });
   }
   if (!isStripeConfigured() || !stripe) {
     return NextResponse.json(
-      { error: "بوابة الدفع غير مهيأة. أضف STRIPE_SECRET_KEY في .env" },
+      { error: t.stripeNotConfigured },
       { status: 503 }
     );
   }
@@ -27,22 +30,22 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
+    return NextResponse.json({ error: t.invalidData }, { status: 400 });
   }
   const { propertyId, shares } = parsed.data;
 
   if (!features.partialSale) {
     return NextResponse.json(
-      { error: "البيع الجزئي غير متاح حاليًا — قيد الترخيص النظامي." },
+      { error: t.partialSaleUnavailable },
       { status: 400 }
     );
   }
 
   const property = await prisma.property.findUnique({ where: { id: propertyId } });
-  if (!property) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
+  if (!property) return NextResponse.json({ error: t.notFound }, { status: 404 });
   if (property.listingType !== "PARTIAL_SALE" || !property.totalShares || !property.sharePriceSAR) {
     return NextResponse.json(
-      { error: "هذا العقار غير متاح للبيع الجزئي" },
+      { error: t.propertyNotPartialSale },
       { status: 400 }
     );
   }
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (!consented) {
     return NextResponse.json(
       {
-        error: "يجب استكمال إقرار المستثمر قبل الدفع.",
+        error: t.acknowledgementRequired,
         redirect: `/invest/${propertyId}/acknowledge`,
       },
       { status: 412 }
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
   const remaining = property.totalShares - property.soldShares;
   if (shares > remaining) {
     return NextResponse.json(
-      { error: `الحد الأقصى المتاح: ${remaining} حصة` },
+      { error: t.maxSharesAvailable(remaining) },
       { status: 400 }
     );
   }

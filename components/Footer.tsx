@@ -2,22 +2,6 @@ import Link from "next/link";
 import { LogoSignature } from "./Logo";
 import type { Dictionary } from "@/lib/i18n";
 
-const LEGAL_LINKS = [
-  { href: "/legal/terms",      label: "الشروط والأحكام" },
-  { href: "/legal/privacy",    label: "سياسة الخصوصية (PDPL)" },
-  { href: "/legal/disclaimer", label: "إخلاء المسؤولية" },
-  { href: "/legal/risk",       label: "إفصاح المخاطر" },
-  { href: "/legal/aml",        label: "AML / KYC" },
-  { href: "/legal/refund",     label: "سياسة الاسترداد" },
-];
-
-const PLATFORM_LINKS = [
-  { href: "/properties", label: "العقارات المتاحة" },
-  { href: "/#certified", label: "اعتماد العراب" },
-  { href: "/faq",        label: "الأسئلة الشائعة" },
-  { href: "/contact",    label: "اتصل بنا" },
-];
-
 const PARTNERS = [
   "Alarrab Engineering & Partner",
   "Azoom United Contracting",
@@ -27,6 +11,23 @@ const PARTNERS = [
 
 export function Footer({ dict }: { dict: Dictionary }) {
   const f = dict.footer;
+
+  const legalLinks: { href: string; label: string }[] = [
+    { href: "/legal/terms", label: dict.legal.routes.terms },
+    { href: "/legal/privacy", label: dict.legal.routes.privacy },
+    { href: "/legal/disclaimer", label: dict.legal.routes.disclaimer },
+    { href: "/legal/risk", label: dict.legal.routes.risk },
+    { href: "/legal/aml", label: dict.legal.routes.aml },
+    { href: "/legal/refund", label: dict.legal.routes.refund },
+  ];
+
+  const platformLinks: { href: string; label: string }[] = [
+    { href: "/properties", label: f.links.properties },
+    { href: "/#certified", label: f.links.certified },
+    { href: "/faq", label: f.links.faq },
+    { href: "/contact", label: f.links.contact },
+  ];
+
   return (
     <footer style={{ background: "#f5f8f6" }} className="mt-16 border-t border-line">
       <div
@@ -42,16 +43,16 @@ export function Footer({ dict }: { dict: Dictionary }) {
             {f.tag}
           </p>
           <p className="mt-4 text-xs text-muted tabular" style={{ lineHeight: 1.9 }}>
-            شركة بصير لتقنية المعلومات
+            {f.companyLine1}
             <br />
-            الرقم الموحد ٧٠٠٥٧١٠٤٤٢
+            {f.companyLine2}
           </p>
         </div>
 
         <div>
           <div className="font-bold text-ink mb-3">{f.platform}</div>
           <ul className="space-y-2 text-muted-2">
-            {PLATFORM_LINKS.map((l) => (
+            {platformLinks.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="hover:text-green-700 transition">
                   {l.label}
@@ -71,9 +72,9 @@ export function Footer({ dict }: { dict: Dictionary }) {
         </div>
 
         <div>
-          <div className="font-bold text-ink mb-3">قانوني</div>
+          <div className="font-bold text-ink mb-3">{f.legal}</div>
           <ul className="space-y-2 text-muted-2">
-            {LEGAL_LINKS.map((l) => (
+            {legalLinks.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="hover:text-green-700 transition">
                   {l.label}
@@ -94,7 +95,7 @@ export function Footer({ dict }: { dict: Dictionary }) {
         className="border-t border-line text-center text-xs text-muted"
         style={{ padding: "18px 32px" }}
       >
-        © {new Date().getFullYear()} Aqar Mudar — منتج من First Ex — Powered by Bassir Technology
+        © {new Date().getFullYear()} {f.copyright}
       </div>
     </footer>
   );

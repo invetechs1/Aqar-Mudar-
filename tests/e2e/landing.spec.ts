@@ -5,7 +5,7 @@ test("landing page renders in Arabic RTL", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("lang", "ar");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByText("العراب Certified", { exact: false })).toBeVisible();
+  await expect(page.getByText("العراب Certified", { exact: false }).first()).toBeVisible();
 });
 
 test("locale switch to English changes dir and lang", async ({ page }) => {

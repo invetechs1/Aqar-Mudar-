@@ -6,6 +6,7 @@ import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { audit } from "@/lib/audit";
 import { sendEmailVerification } from "@/lib/notify";
 import { recordConsentBatch } from "@/lib/consent";
+import { apiMessages, getRequestLocale } from "@/lib/api-errors";
 
 const schema = z.object({
   name: z.string().min(2).max(80),
@@ -13,7 +14,7 @@ const schema = z.object({
   password: passwordSchema,
   phone: z
     .string()
-    .regex(/^\+?[0-9\s-]{8,20}$/, "رقم جوال غير صحيح")
+    .regex(/^\+?[0-9\s-]{8,20}$/)
     .optional(),
   role: z.enum(["OWNER", "INVESTOR"]).default("OWNER"),
   consent: z.object({
@@ -24,10 +25,12 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const t = apiMessages(getRequestLocale());
+
   const rl = await rateLimit(clientKey(req, "signup"), 5, 300);
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: "محاولات كثيرة. حاول مجددًا بعد قليل." },
+      { error: t.tooManyAttemptsRetry },
       { status: 429 }
     );
   }
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "بيانات غير صحيحة", details: parsed.error.flatten() },
+      { error: t.invalidData, details: parsed.error.flatten() },
       { status: 400 }
     );
   }
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   const existing = await prisma.user.findUnique({ where: { email: emailLower } });
   if (existing) {
-    return NextResponse.json({ error: "البريد الإلكتروني مستخدم بالفعل" }, { status: 409 });
+    return NextResponse.json({ error: t.emailInUse }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);

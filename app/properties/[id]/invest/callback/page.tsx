@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatSAR } from "@/lib/format";
 import { getPayment, isMoyasarConfigured } from "@/lib/moyasar";
 import { redirect } from "next/navigation";
+import { getDictionary, getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ export default async function InvestCallbackPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect(`/auth/signin`);
+
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.invest.callback;
 
   const investmentId = searchParams.investment;
   if (!investmentId) redirect(`/properties/${params.id}`);
@@ -63,31 +68,27 @@ export default async function InvestCallbackPage({
       <div className="card p-8 text-center">
         <div className="text-5xl mb-3">{paid ? "✓" : failed ? "✗" : "⏳"}</div>
         <h1 className="text-2xl font-bold mb-2">
-          {paid ? "تم استلام دفعتك" : failed ? "فشل الدفع" : "جارٍ تأكيد الدفع"}
+          {paid ? t.paidTitle : failed ? t.failedTitle : t.pendingTitle}
         </h1>
         <p className="text-slate-600 mb-6">
-          {paid
-            ? "شكرًا لاستثمارك في عقار مدر. سيصلك إيصال على بريدك الإلكتروني."
-            : failed
-            ? "لم تتم عملية الدفع. يمكنك المحاولة مجددًا من صفحة الاستثمار."
-            : "قد تحتاج لحظات حتى يتم تأكيد الدفع من بوابة الدفع."}
+          {paid ? t.paidBody : failed ? t.failedBody : t.pendingBody}
         </p>
         <div className="grid grid-cols-2 gap-3 text-sm mb-6">
           <div className="rounded bg-slate-50 p-3">
-            <div className="text-xs text-slate-500">العقار</div>
+            <div className="text-xs text-slate-500">{t.propertyLabel}</div>
             <div className="font-semibold">{inv.property.title}</div>
           </div>
           <div className="rounded bg-slate-50 p-3">
-            <div className="text-xs text-slate-500">المبلغ</div>
-            <div className="font-semibold">{formatSAR(inv.amountSAR)}</div>
+            <div className="text-xs text-slate-500">{t.amountLabel}</div>
+            <div className="font-semibold">{formatSAR(inv.amountSAR, locale)}</div>
           </div>
         </div>
         <div className="flex gap-2 justify-center">
           <Link href="/dashboard" className="btn-primary">
-            لوحة التحكم
+            {t.dashboard}
           </Link>
           <Link href={`/properties/${params.id}`} className="btn-secondary">
-            العقار
+            {t.property}
           </Link>
         </div>
       </div>

@@ -18,6 +18,21 @@
 }
 
 @layer components {
+  /*
+   * The base rule above sets color directly on every heading element, which
+   * wins over an ancestor's inherited text color (a same-specificity direct
+   * rule always beats inheritance, regardless of the ancestor's specificity).
+   * Dark surfaces must therefore re-assert their color on headings
+   * explicitly — `color: inherit` here pulls it back from the dark
+   * container instead of the global dark-ink default.
+   */
+  .text-white h1, .text-white h2, .text-white h3, .text-white h4,
+  .panel-dark h1, .panel-dark h2, .panel-dark h3, .panel-dark h4 {
+    color: inherit;
+  }
+}
+
+@layer components {
   /* Buttons — token-driven */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition;

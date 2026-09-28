@@ -5,16 +5,18 @@ import { prisma } from "@/lib/prisma";
 import {
   formatSAR,
   formatDate,
-  PROPERTY_TYPE_AR,
-  LISTING_AR,
-  CONDITION_AR,
-  RISK_AR,
+  PROPERTY_TYPE,
+  LISTING_TYPE,
+  CONDITION,
+  RISK,
+  vocab,
 } from "@/lib/format";
 import { InquiryForm } from "@/components/InquiryForm";
 import { PropertyMap } from "@/components/PropertyMap";
 import { JsonLd } from "@/components/JsonLd";
 import { env } from "@/lib/env";
 import { features } from "@/lib/features";
+import { getDictionary, getLocale, type Dictionary } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,10 @@ export async function generateMetadata({
     where: { id: params.id },
     select: { title: true, description: true, city: true, images: true },
   });
-  if (!property) return { title: "غير موجود" };
+  if (!property) {
+    const dict = getDictionary();
+    return { title: dict.properties.detail.notFoundTitle };
+  }
   const imgs = Array.isArray(property.images) ? (property.images as string[]) : [];
   return {
     title: property.title,
@@ -51,6 +56,10 @@ export default async function PropertyDetailPage({
 }: {
   params: { id: string };
 }) {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.properties.detail;
+
   const property = await prisma.property.findUnique({
     where: { id: params.id },
     include: {
@@ -108,9 +117,9 @@ export default async function PropertyDetailPage({
       <JsonLd data={productSchema} />
 
       <nav className="text-xs text-muted mb-6" aria-label="breadcrumb">
-        <Link href="/" className="hover:text-green-700">الرئيسية</Link>
+        <Link href="/" className="hover:text-green-700">{t.breadcrumbHome}</Link>
         <span className="mx-2">/</span>
-        <Link href="/properties" className="hover:text-green-700">العقارات</Link>
+        <Link href="/properties" className="hover:text-green-700">{t.breadcrumbProperties}</Link>
         <span className="mx-2">/</span>
         <span className="text-muted-2">{property.title}</span>
       </nav>
@@ -159,10 +168,10 @@ export default async function PropertyDetailPage({
           <div className="card" style={{ padding: 28 }}>
             <div className="flex flex-wrap gap-2 mb-4">
               {property.isCertified && (
-                <span className="chip-certified">✓ العراب Certified</span>
+                <span className="chip-certified">{t.certifiedBadge}</span>
               )}
-              <span className="chip-muted">{LISTING_AR[property.listingType]}</span>
-              <span className="chip-muted">{PROPERTY_TYPE_AR[property.propertyType]}</span>
+              <span className="chip-muted">{vocab(LISTING_TYPE, locale, property.listingType)}</span>
+              <span className="chip-muted">{vocab(PROPERTY_TYPE, locale, property.propertyType)}</span>
             </div>
             <h1 className="font-extrabold" style={{ fontSize: 32, letterSpacing: "-0.01em" }}>
               {property.title}
@@ -180,15 +189,15 @@ export default async function PropertyDetailPage({
                 borderTop: "1px solid #eef2f0",
               }}
             >
-              <Fact label="السعر" value={formatSAR(property.price)} highlight />
-              <Fact label="المساحة" value={`${property.area} م²`} />
-              {property.bedrooms != null && <Fact label="غرف" value={String(property.bedrooms)} />}
-              {property.bathrooms != null && <Fact label="حمامات" value={String(property.bathrooms)} />}
-              {property.yearBuilt && <Fact label="سنة البناء" value={String(property.yearBuilt)} />}
+              <Fact label={t.facts.price} value={formatSAR(property.price, locale)} highlight />
+              <Fact label={t.facts.area} value={`${property.area} ${t.facts.areaUnit}`} />
+              {property.bedrooms != null && <Fact label={t.facts.bedrooms} value={String(property.bedrooms)} />}
+              {property.bathrooms != null && <Fact label={t.facts.bathrooms} value={String(property.bathrooms)} />}
+              {property.yearBuilt && <Fact label={t.facts.yearBuilt} value={String(property.yearBuilt)} />}
             </div>
 
             <div className="mt-6 pt-6" style={{ borderTop: "1px solid #eef2f0" }}>
-              <h2 className="font-bold mb-3" style={{ fontSize: 18 }}>وصف العقار</h2>
+              <h2 className="font-bold mb-3" style={{ fontSize: 18 }}>{t.descriptionTitle}</h2>
               <p className="text-muted-2 font-light whitespace-pre-line" style={{ fontSize: 15, lineHeight: 1.9 }}>
                 {property.description}
               </p>
@@ -216,14 +225,14 @@ export default async function PropertyDetailPage({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-bold" style={{ fontSize: 16 }}>
-                    التقرير الهندسي — Alarrab Certified
+                    {t.report.title}
                   </div>
                   <div className="text-xs text-muted tabular mt-1">
-                    صادر من {r.certifiedBy} · {formatDate(r.issuedAt)}
+                    {t.report.issuedByPrefix} {r.certifiedBy} · {formatDate(r.issuedAt, locale)}
                   </div>
                 </div>
                 <span className={RISK_CHIP[r.riskLevel] ?? "chip-muted"}>
-                  مخاطر: {RISK_AR[r.riskLevel] ?? r.riskLevel}
+                  {t.report.riskPrefix}: {vocab(RISK, locale, r.riskLevel)}
                 </span>
               </div>
 
@@ -232,12 +241,12 @@ export default async function PropertyDetailPage({
                   className="grid gap-4"
                   style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
                 >
-                  <IndicatorTile label="الحالة الإنشائية" value={CONDITION_AR[r.structuralCondition]} />
-                  <IndicatorTile label="جودة التشطيبات" value={CONDITION_AR[r.finishingQuality]} />
-                  <IndicatorTile label="الأنظمة الكهربائية" value={CONDITION_AR[r.electricalCondition]} />
-                  <IndicatorTile label="الأنظمة الميكانيكية" value={CONDITION_AR[r.mechanicalCondition]} />
-                  <IndicatorTile label="مستوى المخاطر" value={RISK_AR[r.riskLevel]} />
-                  <IndicatorTile label="العمر الافتراضي" value={`${r.estimatedLifespan} سنة`} />
+                  <IndicatorTile label={t.report.indicators.structural} value={vocab(CONDITION, locale, r.structuralCondition)} />
+                  <IndicatorTile label={t.report.indicators.finishing} value={vocab(CONDITION, locale, r.finishingQuality)} />
+                  <IndicatorTile label={t.report.indicators.electrical} value={vocab(CONDITION, locale, r.electricalCondition)} />
+                  <IndicatorTile label={t.report.indicators.mechanical} value={vocab(CONDITION, locale, r.mechanicalCondition)} />
+                  <IndicatorTile label={t.report.indicators.risk} value={vocab(RISK, locale, r.riskLevel)} />
+                  <IndicatorTile label={t.report.indicators.lifespan} value={`${r.estimatedLifespan} ${t.report.indicators.lifespanUnit}`} />
                 </div>
 
                 {r.valueUpliftPotential != null && r.valueUpliftPotential > 0 && (
@@ -252,7 +261,7 @@ export default async function PropertyDetailPage({
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-bold" style={{ color: "#e6c982", fontSize: 15 }}>
-                        ↗ فرصة رفع القيمة <span className="text-xs opacity-70 font-normal">(تقديري)</span>
+                        ↗ {t.report.uplift.title} <span className="text-xs opacity-70 font-normal">{t.report.uplift.estimatedTag}</span>
                       </div>
                       <span
                         className="tabular"
@@ -275,21 +284,21 @@ export default async function PropertyDetailPage({
                     )}
                     <div className="grid grid-cols-3 gap-4" style={{ paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.08)" }}>
                       {r.upliftCost && (
-                        <UpliftStat label="التكلفة التقديرية" value={formatSAR(r.upliftCost)} />
+                        <UpliftStat label={t.report.uplift.cost} value={formatSAR(r.upliftCost, locale)} />
                       )}
                       {r.upliftDurationMonths && (
-                        <UpliftStat label="مدة التنفيذ" value={`${r.upliftDurationMonths} شهر`} />
+                        <UpliftStat label={t.report.uplift.duration} value={`${r.upliftDurationMonths} ${t.report.uplift.durationUnit}`} />
                       )}
                       {r.expectedReturnPct && (
                         <UpliftStat
-                          label="العائد المتوقع"
+                          label={t.report.uplift.expectedReturn}
                           value={`+${r.expectedReturnPct}%`}
-                          note="تقديري"
+                          note={t.report.uplift.estimatedNote}
                         />
                       )}
                     </div>
                     <div className="text-xs mt-4" style={{ color: "#7f9a8f" }}>
-                      دراسة تطوير بواسطة Azoom United Contracting — الأرقام تقديرية.
+                      {t.report.uplift.footer}
                     </div>
                   </div>
                 )}
@@ -304,7 +313,7 @@ export default async function PropertyDetailPage({
                   }}
                 >
                   <h4 className="uppercase text-xs tracking-wider font-semibold mb-2" style={{ color: "#2f6a53" }}>
-                    التوصيات الهندسية
+                    {t.report.recommendationsTitle}
                   </h4>
                   <p className="text-muted-2 font-light" style={{ fontSize: 15, lineHeight: 1.9 }}>
                     {r.recommendations}
@@ -315,35 +324,31 @@ export default async function PropertyDetailPage({
           ) : (
             <div className="card" style={{ padding: 24, background: "#fdf6e6", borderColor: "#f2e2b6" }}>
               <div className="font-semibold" style={{ color: "#b28a35" }}>
-                هذا العقار قيد المراجعة الهندسية
+                {t.report.pendingTitle}
               </div>
               <div className="text-sm mt-1" style={{ color: "#8a6a1f" }}>
-                لم يصدر بعد اعتماد العراب لهذا العقار. سيظهر التقرير الهندسي هنا فور اعتماده.
+                {t.report.pendingBody}
               </div>
             </div>
           )}
 
-          {/* NEW: Risk & disclaimer block */}
+          {/* Risk & disclaimer block */}
           <div className="legal-block">
-            <h4>تنبيه المخاطر — يُرجى القراءة قبل اتخاذ أي قرار</h4>
-            <p>
-              الأرقام والعوائد والتقديرات الواردة أعلاه (نسبة رفع القيمة، التكلفة التقديرية،
-              العائد المتوقع، والعمر الافتراضي) هي تقديرات هندسية مبنية على حالة العقار في
-              تاريخ الفحص، ولا تُعدّ ضمانًا لأي عائد مستقبلي. القيمة السوقية للعقار قد ترتفع أو تنخفض.
-            </p>
+            <h4>{t.riskBlock.title}</h4>
+            <p>{t.riskBlock.body}</p>
             <p style={{ color: "#8a7a52", fontSize: 13 }}>
-              الاستثمار العقاري ينطوي على مخاطر. راجع{" "}
-              <Link href="/legal/risk" className="underline font-semibold">إفصاح مخاطر الاستثمار</Link>
-              {" و "}
-              <Link href="/legal/disclaimer" className="underline font-semibold">إخلاء المسؤولية</Link>
-              {" "}قبل اتخاذ قرار.
+              {t.riskBlock.footerPrefix}{" "}
+              <Link href="/legal/risk" className="underline font-semibold">{t.riskBlock.riskLink}</Link>
+              {` ${t.riskBlock.andWord} `}
+              <Link href="/legal/disclaimer" className="underline font-semibold">{t.riskBlock.disclaimerLink}</Link>
+              {" "}{t.riskBlock.footerSuffix}
             </p>
           </div>
 
           {/* Map */}
           {property.latitude != null && property.longitude != null && (
             <div className="card" style={{ padding: 20 }}>
-              <h2 className="font-bold mb-3" style={{ fontSize: 18 }}>الموقع على الخريطة</h2>
+              <h2 className="font-bold mb-3" style={{ fontSize: 18 }}>{t.mapTitle}</h2>
               <div style={{ borderRadius: 16, overflow: "hidden" }}>
                 <PropertyMap latitude={property.latitude} longitude={property.longitude} height={280} />
               </div>
@@ -354,7 +359,7 @@ export default async function PropertyDetailPage({
         {/* SIDEBAR */}
         <aside style={{ flex: "1 1 320px", position: "sticky", top: 96, alignSelf: "flex-start" }}>
           <div className="card" style={{ padding: 26, boxShadow: "0 8px 28px rgba(22,48,42,.07)" }}>
-            <div className="text-xs text-muted uppercase tracking-wider">السعر</div>
+            <div className="text-xs text-muted uppercase tracking-wider">{t.sidebar.price}</div>
             <div
               className="tabular"
               style={{
@@ -366,15 +371,15 @@ export default async function PropertyDetailPage({
                 whiteSpace: "nowrap",
               }}
             >
-              {formatSAR(property.price)}
+              {formatSAR(property.price, locale)}
             </div>
 
             {property.listingType === "PARTIAL_SALE" && (
-              <PartialSaleSlot />
+              <PartialSaleSlot dict={t.sidebar.partialSale} />
             )}
 
             <div className="mt-6 pt-5" style={{ borderTop: "1px solid #eef2f0" }}>
-              <div className="text-xs text-muted uppercase tracking-wider">المالك</div>
+              <div className="text-xs text-muted uppercase tracking-wider">{t.sidebar.owner}</div>
               <div className="font-bold mt-1">{property.owner.name}</div>
               {property.owner.phone && (
                 <div className="text-sm text-muted-2 mt-1 tabular">{property.owner.phone}</div>
@@ -382,7 +387,7 @@ export default async function PropertyDetailPage({
             </div>
 
             <div className="mt-5">
-              <InquiryForm propertyId={property.id} />
+              <InquiryForm propertyId={property.id} dict={dict.inquiry} />
             </div>
           </div>
         </aside>
@@ -433,14 +438,14 @@ function UpliftStat({ label, value, note }: { label: string; value: string; note
  * Partial-sale sidebar slot.
  *
  * Rendered even when the feature is off — the design change explicitly asked
- * for a "قريبًا" placeholder so certified fractional properties still surface
+ * for a "coming soon" placeholder so certified fractional properties still surface
  * the intent while the licence is pending. The DB columns and /invest route
  * are preserved; only the CTA is disabled.
  */
-function PartialSaleSlot() {
+function PartialSaleSlot({ dict }: { dict: Dictionary["properties"]["detail"]["sidebar"]["partialSale"] }) {
   if (features.partialSale) {
     // When the flag flips on, the previous invest CTA should be re-wired.
-    // Keeping the "قريبًا" copy here as the fallback avoids a broken CTA on
+    // Keeping this placeholder here as the fallback avoids a broken CTA on
     // a data hiccup; the actual live experience should be reintroduced then.
     return null;
   }
@@ -456,12 +461,12 @@ function PartialSaleSlot() {
     >
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#5b6863" }}>
-          بيع جزئي
+          {dict.label}
         </div>
-        <span className="chip-warn" style={{ fontSize: 11 }}>قريبًا</span>
+        <span className="chip-warn" style={{ fontSize: 11 }}>{dict.soon}</span>
       </div>
       <p className="text-muted-2 font-light" style={{ fontSize: 13, lineHeight: 1.75 }}>
-        سيُفتح الاستثمار بحصص بعد استكمال الترخيص النظامي اللازم.
+        {dict.body}
       </p>
       <button
         disabled
@@ -475,7 +480,7 @@ function PartialSaleSlot() {
           fontSize: 13,
         }}
       >
-        أبلغني عند الإطلاق
+        {dict.notifyMe}
       </button>
     </div>
   );

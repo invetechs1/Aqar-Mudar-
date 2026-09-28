@@ -2,22 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatSAR } from "@/lib/format";
 
 type Provider = "moyasar" | "stripe";
 
-const SAR = new Intl.NumberFormat("ar-SA", {
-  style: "currency",
-  currency: "SAR",
-  maximumFractionDigits: 0,
-});
-
 export function InvestForm({
+  dict,
+  locale,
   propertyId,
   sharePrice,
   maxShares,
   moyasarAvailable,
   stripeAvailable,
 }: {
+  dict: Dictionary["invest"]["page"];
+  locale: Locale;
   propertyId: string;
   sharePrice: number;
   maxShares: number;
@@ -50,7 +50,7 @@ export function InvestForm({
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(data.error ?? "فشل بدء الدفع");
+      setError(data.error ?? dict.errors.genericFail);
       setState("err");
       return;
     }
@@ -62,26 +62,25 @@ export function InvestForm({
     return (
       <div className="card p-6 space-y-4">
         <div className="rounded-lg bg-brand-50 border border-brand-200 p-4">
-          <div className="font-semibold text-brand-800 mb-1">تم إنشاء طلب الاستثمار</div>
-          <div className="text-sm text-slate-700">المبلغ: {SAR.format(total)}</div>
+          <div className="font-semibold text-brand-800 mb-1">{dict.orderCreated}</div>
+          <div className="text-sm text-slate-700">{dict.amountLabel}: {formatSAR(total, locale)}</div>
           <div className="text-xs text-slate-500 mt-1">
-            رقم الاستثمار: <code className="font-mono">{payload.investmentId}</code>
+            {dict.investmentIdLabel}: <code className="font-mono">{payload.investmentId}</code>
           </div>
         </div>
         <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm">
-          <div className="font-semibold mb-2">إكمال الدفع</div>
+          <div className="font-semibold mb-2">{dict.completePaymentTitle}</div>
           {payload.provider === "moyasar" ? (
             <p className="text-slate-600">
-              تم إنشاء عملية دفع Moyasar بمعرّف{" "}
+              {dict.moyasarInstructionsPrefix}{" "}
               <code className="font-mono text-xs bg-white px-2 py-0.5 rounded border">
                 {payload.paymentId}
               </code>
-              . استخدم Moyasar.js Elements في الواجهة أو الجوال بمفتاح النشر أدناه لعرض
-              نموذج البطاقة/مدى/Apple Pay وإكمال الدفع.
+              . {dict.moyasarInstructionsSuffix}
             </p>
           ) : (
             <p className="text-slate-600">
-              استخدم <code>clientSecret</code> مع Stripe Elements لإكمال الدفع.
+              {dict.stripeInstructionsPrefix} <code>clientSecret</code> {dict.stripeInstructionsSuffix}
             </p>
           )}
           <div className="mt-3 rounded bg-white border border-slate-200 p-3 font-mono text-xs break-all">
@@ -92,7 +91,7 @@ export function InvestForm({
           className="btn-secondary w-full"
           onClick={() => router.push(`/properties/${propertyId}`)}
         >
-          العودة للعقار
+          {dict.backToProperty}
         </button>
       </div>
     );
@@ -101,7 +100,7 @@ export function InvestForm({
   return (
     <form onSubmit={submit} className="card p-6 space-y-4">
       <div>
-        <label className="label">عدد الحصص</label>
+        <label className="label">{dict.sharesLabel}</label>
         <input
           type="number"
           min={1}
@@ -112,11 +111,13 @@ export function InvestForm({
           }
           className="input"
         />
-        <div className="text-xs text-slate-500 mt-1">حد أقصى: {maxShares} حصة</div>
+        <div className="text-xs text-slate-500 mt-1">
+          {dict.maxSharesLabel}: {maxShares} {dict.maxSharesUnit}
+        </div>
       </div>
 
       <div>
-        <label className="label">وسيلة الدفع</label>
+        <label className="label">{dict.paymentMethod}</label>
         <div className="grid grid-cols-2 gap-2">
           <label
             className={`cursor-pointer rounded-lg border p-3 text-sm ${
@@ -135,7 +136,7 @@ export function InvestForm({
               className="me-2"
             />
             <span className="font-semibold">Moyasar</span>
-            <div className="text-xs text-slate-500 mt-1">مدى · Apple Pay · بطاقات</div>
+            <div className="text-xs text-slate-500 mt-1">{dict.moyasarDesc}</div>
           </label>
           <label
             className={`cursor-pointer rounded-lg border p-3 text-sm ${
@@ -154,23 +155,23 @@ export function InvestForm({
               className="me-2"
             />
             <span className="font-semibold">Stripe</span>
-            <div className="text-xs text-slate-500 mt-1">بطاقات دولية</div>
+            <div className="text-xs text-slate-500 mt-1">{dict.stripeDesc}</div>
           </label>
         </div>
       </div>
 
       <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-slate-600">سعر الحصة</span>
-          <span className="font-semibold">{SAR.format(sharePrice)}</span>
+          <span className="text-slate-600">{dict.sharePrice}</span>
+          <span className="font-semibold">{formatSAR(sharePrice, locale)}</span>
         </div>
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-slate-600">عدد الحصص</span>
+          <span className="text-slate-600">{dict.sharesLabel}</span>
           <span className="font-semibold">× {shares}</span>
         </div>
         <div className="border-t border-slate-200 pt-2 flex justify-between">
-          <span className="font-semibold">الإجمالي</span>
-          <span className="font-bold text-brand-700 text-lg">{SAR.format(total)}</span>
+          <span className="font-semibold">{dict.totalLabel}</span>
+          <span className="font-bold text-brand-700 text-lg">{formatSAR(total, locale)}</span>
         </div>
       </div>
 
@@ -181,7 +182,7 @@ export function InvestForm({
         disabled={state === "loading" || maxShares === 0 || (!moyasarAvailable && !stripeAvailable)}
         className="btn-primary w-full"
       >
-        {state === "loading" ? "جارٍ التحضير..." : `استثمر ${shares} حصة`}
+        {state === "loading" ? dict.submitting : `${dict.submitPrefix} ${shares} ${dict.submitSuffix}`}
       </button>
     </form>
   );

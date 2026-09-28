@@ -8,45 +8,50 @@ import { JsonLd } from "@/components/JsonLd";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { env } from "@/lib/env";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXTAUTH_URL),
-  title: {
-    default: "عقار مدر — Aqar Mudar | منصة الاستثمار العقاري المعتمدة هندسيًا",
-    template: "%s | عقار مدر",
-  },
-  description:
-    "منصة الاستثمار العقاري المعتمدة هندسيًا. Engineering-certified real-estate investment in Saudi Arabia.",
-  applicationName: "Aqar Mudar",
-  authors: [{ name: "First Ex" }],
-  keywords: [
-    "عقار", "استثمار عقاري", "السعودية", "الرياض", "تقرير هندسي",
-    "Alarrab Certified", "عقار مدر", "real estate",
-  ],
-  openGraph: {
-    type: "website",
-    siteName: "Aqar Mudar",
-    locale: "ar_SA",
-    alternateLocale: "en_US",
-    title: "عقار مدر — منصة الاستثمار العقاري المعتمدة هندسيًا",
-    description: "استثمر في عقار موثوق، معتمد هندسيًا من العراب.",
-    url: env.NEXTAUTH_URL,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "عقار مدر — Aqar Mudar",
-    description: "منصة الاستثمار العقاري المعتمدة هندسيًا.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const seo = dict.seo;
+
+  return {
+    metadataBase: new URL(env.NEXTAUTH_URL),
+    title: {
+      default: seo.titleDefault,
+      template: seo.titleTemplate,
+    },
+    description: seo.description,
+    applicationName: "Aqar Mudar",
+    authors: [{ name: "First Ex" }],
+    keywords: [
+      "عقار", "استثمار عقاري", "السعودية", "الرياض", "تقرير هندسي",
+      "Alarrab Certified", "عقار مدر", "real estate",
+    ],
+    openGraph: {
+      type: "website",
+      siteName: "Aqar Mudar",
+      locale: locale === "ar" ? "ar_SA" : "en_US",
+      alternateLocale: locale === "ar" ? "en_US" : "ar_SA",
+      title: seo.ogTitle,
+      description: seo.ogDescription,
+      url: env.NEXTAUTH_URL,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.twitterTitle,
+      description: seo.twitterDescription,
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-};
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#16302a",
@@ -65,8 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     alternateName: "عقار مدر",
     url: env.NEXTAUTH_URL,
     logo: `${env.NEXTAUTH_URL}/favicon.ico`,
-    description:
-      "منصة الاستثمار العقاري المعتمدة هندسيًا في المملكة العربية السعودية.",
+    description: dict.seo.orgDescription,
     address: {
       "@type": "PostalAddress",
       addressLocality: "الرياض",

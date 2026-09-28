@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { LEGAL_ROUTES } from "@/lib/legal-docs";
+import { getDictionary, getLocale } from "@/lib/i18n";
 
-export const metadata = { title: "المركز القانوني" };
+export const metadata = { title: "Legal Center" };
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const routes = LEGAL_ROUTES[locale];
+
   return (
     <div className="mx-auto max-w-page page-x" style={{ padding: "40px 32px 80px" }}>
       <div
@@ -19,11 +24,11 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             }}
           >
             <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
-              المستندات النظامية
+              {dict.legal.sidebarDocsLabel}
             </div>
             <nav aria-label="legal">
               <ul className="space-y-1">
-                {LEGAL_ROUTES.map((r) => (
+                {routes.map((r) => (
                   <li key={r.slug}>
                     <LegalNavLink href={r.href} label={r.label} />
                   </li>
@@ -34,9 +39,9 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
               className="text-xs text-muted-2 mt-5 pt-5 tabular"
               style={{ lineHeight: 1.9, borderTop: "1px solid #e2e9e6" }}
             >
-              شركة بصير لتقنية المعلومات
+              {dict.footer.companyLine1}
               <br />
-              الرقم الموحد ٧٠٠٥٧١٠٤٤٢
+              {dict.footer.companyLine2}
             </div>
           </div>
         </aside>

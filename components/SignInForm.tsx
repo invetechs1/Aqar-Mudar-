@@ -39,6 +39,9 @@ export function SignInForm({ dict }: { dict: Dictionary }) {
     } else if (res?.error === "TOTP_INVALID") {
       setError(t.errors.totpInvalid);
       setLoading(false);
+    } else if (res?.error === "ADMIN_2FA_REQUIRED") {
+      setError(t.errors.admin2faRequired);
+      setLoading(false);
     } else {
       setError(t.errors.invalidCredentials);
       setLoading(false);

@@ -27,6 +27,14 @@ export const authOptions: NextAuthOptions = {
         const ok = await verifyPassword(credentials.password, user.passwordHash);
         if (!ok) return null;
 
+        // Admin accounts must have TOTP enabled before they can sign in.
+        // The signin UI maps this error code to a dedicated message that
+        // tells the admin to enable 2FA (via a password-reset flow or
+        // directly on the server), rather than a generic "invalid login".
+        if (user.role === "ADMIN" && !user.totpEnabled) {
+          throw new Error("ADMIN_2FA_REQUIRED");
+        }
+
         if (user.totpEnabled) {
           if (!credentials.totp) {
             throw new Error("TOTP_REQUIRED");

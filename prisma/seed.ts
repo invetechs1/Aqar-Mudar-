@@ -3,7 +3,35 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+/**
+ * Seeds four demo accounts with a known-weak password ("Password123!"), which
+ * is only acceptable for local development and CI. Refuse to run against a
+ * production environment unless the operator opts in with ALLOW_PRODUCTION_SEED=yes,
+ * so a stray `npm run db:seed` on the production DB can't plant a known-password
+ * admin account.
+ */
+function guardProductionSeed(): void {
+  if (process.env.NODE_ENV !== "production") return;
+  if (process.env.ALLOW_PRODUCTION_SEED === "yes") {
+    console.warn(
+      "⚠️  ALLOW_PRODUCTION_SEED=yes — writing demo accounts to a production DB. " +
+      "Change their passwords immediately after this run."
+    );
+    return;
+  }
+  console.error(
+    "✗ Refusing to seed demo accounts against NODE_ENV=production.\n" +
+    "  The seed creates `admin@aqarmudar.sa` with a known password — this would be\n" +
+    "  a critical security hole on a live system. If you really intend to run this\n" +
+    "  on production (e.g. a staging DB tagged as production), re-run with:\n" +
+    "    ALLOW_PRODUCTION_SEED=yes npm run db:seed"
+  );
+  process.exit(1);
+}
+
 async function main() {
+  guardProductionSeed();
+
   const passwordHash = await bcrypt.hash("Password123!", 12);
 
   const admin = await prisma.user.upsert({

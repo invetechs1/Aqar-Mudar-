@@ -166,6 +166,8 @@ const dictionaries = {
           totpRequired: "أدخل رمز التحقق من تطبيق المصادقة (2FA)",
           totpInvalid: "رمز التحقق (2FA) غير صحيح",
           invalidCredentials: "بيانات الدخول غير صحيحة",
+          admin2faRequired:
+            "حسابات الإدارة تتطلب تفعيل المصادقة الثنائية (2FA). تواصل مع مسؤول النظام لتفعيلها من الخادم قبل الدخول.",
         },
       },
       signup: {
@@ -886,6 +888,8 @@ const dictionaries = {
         errors: {
           totpRequired: "Enter the code from your authenticator app (2FA)",
           totpInvalid: "Incorrect verification code (2FA)",
+          admin2faRequired:
+            "Admin accounts require two-factor authentication (2FA). Ask a system administrator to enable it on the server before signing in.",
           invalidCredentials: "Incorrect email or password",
         },
       },

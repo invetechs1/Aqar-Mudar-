@@ -13,13 +13,53 @@ function optionalUrl() {
   return z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional());
 }
 
+/**
+ * Patterns that match the placeholder NEXTAUTH_SECRET values this repo ships
+ * with (in .env.example, the Dockerfile build arg, and the loadEnv dev
+ * fallback below). In production these are catastrophic — a leaked known
+ * secret lets anyone forge sessions. The server refuses to boot if the
+ * running secret matches any of them.
+ */
+const WEAK_SECRETS: RegExp[] = [
+  /^change-me/i,
+  /^please-generate/i,
+  /^demo-only/i,
+  /^dev-only/i,
+  /^build-time-placeholder/i,
+  /^test-secret/i,
+];
+
+function strongSecretInProd(secret: string): true | string {
+  if (process.env.NODE_ENV !== "production") return true;
+  // Next.js sets NEXT_PHASE=phase-production-build while compiling, before any
+  // real traffic hits the server. The Dockerfile intentionally supplies a
+  // placeholder NEXTAUTH_SECRET for that phase (see the ARG comment there), so
+  // we only enforce the strong-secret rule at runtime, never during build.
+  if (process.env.NEXT_PHASE === "phase-production-build") return true;
+  for (const re of WEAK_SECRETS) {
+    if (re.test(secret)) {
+      return `NEXTAUTH_SECRET looks like a placeholder (${re}). Generate a real one with 'openssl rand -base64 32'.`;
+    }
+  }
+  if (secret.length < 32) {
+    return "NEXTAUTH_SECRET must be at least 32 characters in production.";
+  }
+  return true;
+}
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
   DATABASE_URL: z.string().url(),
 
   NEXTAUTH_URL: z.string().url(),
-  NEXTAUTH_SECRET: z.string().min(16, "NEXTAUTH_SECRET must be at least 16 chars"),
+  NEXTAUTH_SECRET: z
+    .string()
+    .min(16, "NEXTAUTH_SECRET must be at least 16 chars")
+    .refine(
+      (s) => strongSecretInProd(s) === true,
+      (s) => ({ message: strongSecretInProd(s) as string })
+    ),
 
   // Storage
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),

@@ -18,6 +18,11 @@ jobs:
       - run: npm run lint --if-present
       - run: npm run typecheck
       - run: npm test
+      # Dependency vulnerability scan — fail the build on anything high/critical
+      # so a vulnerable transitive dep can't quietly land on main.
+      - name: npm audit (high and above)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: false
 
   e2e:
     runs-on: ubuntu-latest

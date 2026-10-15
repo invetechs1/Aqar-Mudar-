@@ -189,6 +189,53 @@ default, since it's copied in during the build).
 
 ## 6. Production considerations
 
+### 6.0 Pre-launch preflight check
+
+Before flipping DNS to a fresh production environment, run:
+
+```bash
+NODE_ENV=production npm run preflight
+```
+
+It connects to the configured `DATABASE_URL` and prints a GO/NO-GO report
+covering every launch-blocking guard the app enforces at runtime:
+
+- `NEXTAUTH_SECRET` is strong and not one of the shipped placeholders
+- `NEXTAUTH_URL` is the public HTTPS origin, not localhost
+- `STORAGE_DRIVER=s3` with real credentials (soft warning otherwise)
+- `EMAIL_DRIVER=resend`, `SMS_DRIVER=twilio`, `MOYASAR_SECRET_KEY`,
+  `NAFATH_API_URL`, `SENTRY_DSN` are configured (soft warnings)
+- The DB is reachable
+- No `*@aqarmudar.sa` seed accounts are still live
+- Every active `ADMIN` user has `totpEnabled=true` — the login path refuses
+  admins without 2FA, so a missing one locks them out of their own system
+
+Exit code is 1 if any `✗` row prints. The script is read-only — it never
+writes to the DB. Re-run after each config change until the report is all
+green.
+
+### Runtime guards you may stumble on
+
+The app also enforces three guards unconditionally in `production`:
+
+1. **Seed script refuses to run.** `npm run db:seed` with
+   `NODE_ENV=production` exits 1. If you really intended it (e.g. a staging DB
+   tagged `production`), set `ALLOW_PRODUCTION_SEED=yes` on that one run only
+   and change the demo passwords right after.
+2. **Weak `NEXTAUTH_SECRET` is rejected at boot.** Any of
+   `change-me…`, `please-generate…`, `demo-only…`, `dev-only…`,
+   `build-time-placeholder…`, `test-secret…`, or any secret shorter than 32
+   chars will refuse to start the server. The Dockerfile's build-arg placeholder
+   is explicitly exempted during `phase-production-build` so `docker build`
+   still succeeds. Generate a real one with `openssl rand -base64 32` and
+   rotate it the same way as any other secret.
+3. **Admin accounts without TOTP cannot sign in.** The signin UI surfaces
+   `ADMIN_2FA_REQUIRED` with a dedicated message. Enable TOTP on the admin
+   account from `/dashboard/verify` *before* promoting the user to the ADMIN
+   role, or fix the DB directly if the admin is already locked out.
+
+### 6.1 Rest of production hygiene
+
 - **Database**: use a managed Postgres (RDS, Cloud SQL, Neon, Supabase, etc.) with
   automated backups. Never rely on the `docker-compose` Postgres container in
   production.

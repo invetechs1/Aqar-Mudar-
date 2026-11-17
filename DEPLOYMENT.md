@@ -258,6 +258,39 @@ The app also enforces three guards unconditionally in `production`:
   penetration test are all prerequisites for a real commercial launch — see the
   Arabic README's "المتطلبات الخارجية" section.
 
+### 6.2 Admin CLI — day-one operations
+
+The web UI deliberately does not expose any way to mint the first admin,
+demote a compromised one, or wipe a lost 2FA secret. These sit behind
+`npm run admin -- <command>` so they're unambiguously a human-on-shell
+operation. Every mutation lands in `AuditLog` with
+`metadata.source=admin-cli` and the shell user.
+
+```bash
+# Day one — the first admin, after you've deleted the demo seed accounts
+npm run admin -- create ceo@aqarmudar.sa "Your Name" "+9665xxxxxxxx"
+# Prints a strong random password ONCE. Hand it over through a private
+# channel. They sign in, change the password, and enable 2FA at
+# /dashboard/verify — without 2FA, admin signin is refused.
+
+# Promote a user already enrolled in 2FA
+npm run admin -- promote finance@aqarmudar.sa
+
+# Lost phone — wipe their 2FA so they can re-enroll
+npm run admin -- reset-2fa finance@aqarmudar.sa
+
+# Forgotten password — generate a new one
+npm run admin -- reset-password finance@aqarmudar.sa
+
+# List all admins with their 2FA / disabled / email-verified flags
+npm run admin -- list
+```
+
+Safety rails: `demote` and `disable` both refuse to touch the **last
+active admin** (otherwise you'd lock yourself out of your own system).
+`promote` refuses to add an admin who doesn't already have 2FA enabled
+(otherwise the auth path would block them on their first signin).
+
 ---
 
 ## 7. Issues found and fixed during this deployment pass
